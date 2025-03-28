@@ -76,7 +76,7 @@ const bindKeys = async () => {
           "tpSl",
         ]),
         waitForElementByXpath(
-          '(//*[starts-with(@id,"tabs")]//*[local-name() = "svg"])[2]',
+          '(//*[starts-with(@id,"tabs")]//*[local-name() = "svg"])[3]',
         ).then((el) => [el, "edit"]),
       ]);
       if (elType === "tpSl") {
@@ -93,7 +93,40 @@ const bindKeys = async () => {
         window.HTMLInputElement.prototype,
         "value",
       )!.set;
-      nativeInputValueSetter!.call(input, "6");
+      nativeInputValueSetter!.call(input, "15");
+      const event = new Event("input", { bubbles: true });
+      input.dispatchEvent(event);
+
+      const confirm = await waitForElementByXpath('//button[text()="Confirm"]');
+      confirm.click();
+    } else if (e.key === "3") {
+      // number 2 to place order
+      e.preventDefault(); // prevent inserting 2 into input field
+      // Create a race between the two element queries to use whichever returns first
+      const [element, elType] = await Promise.race([
+        waitForElementByXpath('//div[text()="+ Add"]').then((el) => [
+          el,
+          "tpSl",
+        ]),
+        waitForElementByXpath(
+          '(//*[starts-with(@id,"tabs")]//*[local-name() = "svg"])[3]',
+        ).then((el) => [el, "edit"]),
+      ]);
+      if (elType === "tpSl") {
+        (element as HTMLElement).click();
+      } else {
+        (element as HTMLElement).dispatchEvent(
+          new Event("click", { bubbles: true }),
+        );
+      }
+      const input = (await waitForElementByXpath(
+        '(//*[starts-with(@id,"dialog")]//input)[2]',
+      )) as HTMLInputElement;
+      const nativeInputValueSetter = Object.getOwnPropertyDescriptor(
+        window.HTMLInputElement.prototype,
+        "value",
+      )!.set;
+      nativeInputValueSetter!.call(input, "1");
       const event = new Event("input", { bubbles: true });
       input.dispatchEvent(event);
 
