@@ -56,19 +56,15 @@ const bindKeys = async () => {
     }
     if (e.key === "ArrowLeft") {
       e.preventDefault();
-      const long = await waitForElementByXpath('//div[text()="Long"]');
+      const long = await waitForElementByXpath('//button[text()="Long"]');
       long.click();
     } else if (e.key === "ArrowRight") {
       e.preventDefault();
-      const short = await waitForElementByXpath('//div[text()="Short"]');
+      const short = await waitForElementByXpath('//button[text()="Short"]');
       short.click();
     } else if (e.key === "1") {
-      // number 1 to place order
-      const trade = await waitForElementByXpath('//button[text()="Trade"]');
-      trade.click();
-    } else if (e.key === "2") {
-      // number 2 to place order
-      e.preventDefault(); // prevent inserting 2 into input field
+      // number 1 to take profit 1%
+      e.preventDefault(); // prevent inserting 1 into input field
       // Create a race between the two element queries to use whichever returns first
       const [element, elType] = await Promise.race([
         waitForElementByXpath('//div[text()="+ Add"]').then((el) => [
@@ -86,21 +82,32 @@ const bindKeys = async () => {
           new Event("click", { bubbles: true }),
         );
       }
-      const input = (await waitForElementByXpath(
+      const inputTakeProfit = (await waitForElementByXpath(
         '(//*[starts-with(@id,"dialog")]//input)[2]',
       )) as HTMLInputElement;
-      const nativeInputValueSetter = Object.getOwnPropertyDescriptor(
+      const nativeInputValueSetterTakeProfit = Object.getOwnPropertyDescriptor(
         window.HTMLInputElement.prototype,
         "value",
       )!.set;
-      nativeInputValueSetter!.call(input, "15");
-      const event = new Event("input", { bubbles: true });
-      input.dispatchEvent(event);
+      nativeInputValueSetterTakeProfit!.call(inputTakeProfit, "1");
+      const eventTakeProfit = new Event("input", { bubbles: true });
+      inputTakeProfit.dispatchEvent(eventTakeProfit);
+
+      const inputStopLoss = (await waitForElementByXpath(
+        '(//*[starts-with(@id,"dialog")]//input)[4]',
+      )) as HTMLInputElement;
+      const nativeInputValueSetterStopLoss = Object.getOwnPropertyDescriptor(
+        window.HTMLInputElement.prototype,
+        "value",
+      )!.set;
+      nativeInputValueSetterStopLoss!.call(inputStopLoss, "37");
+      const eventStopLoss = new Event("input", { bubbles: true });
+      inputStopLoss.dispatchEvent(eventStopLoss);
 
       const confirm = await waitForElementByXpath('//button[text()="Confirm"]');
       confirm.click();
-    } else if (e.key === "3") {
-      // number 2 to place order
+    } else if (e.key === "2") {
+      // number 2 to take profit 15%
       e.preventDefault(); // prevent inserting 2 into input field
       // Create a race between the two element queries to use whichever returns first
       const [element, elType] = await Promise.race([
@@ -119,16 +126,27 @@ const bindKeys = async () => {
           new Event("click", { bubbles: true }),
         );
       }
-      const input = (await waitForElementByXpath(
+      const inputTakeProfit = (await waitForElementByXpath(
         '(//*[starts-with(@id,"dialog")]//input)[2]',
       )) as HTMLInputElement;
-      const nativeInputValueSetter = Object.getOwnPropertyDescriptor(
+      const nativeInputValueSetterTakeProfit = Object.getOwnPropertyDescriptor(
         window.HTMLInputElement.prototype,
         "value",
       )!.set;
-      nativeInputValueSetter!.call(input, "1");
-      const event = new Event("input", { bubbles: true });
-      input.dispatchEvent(event);
+      nativeInputValueSetterTakeProfit!.call(inputTakeProfit, "15");
+      const eventTakeProfit = new Event("input", { bubbles: true });
+      inputTakeProfit.dispatchEvent(eventTakeProfit);
+
+      const inputStopLoss = (await waitForElementByXpath(
+        '(//*[starts-with(@id,"dialog")]//input)[4]',
+      )) as HTMLInputElement;
+      const nativeInputValueSetterStopLoss = Object.getOwnPropertyDescriptor(
+        window.HTMLInputElement.prototype,
+        "value",
+      )!.set;
+      nativeInputValueSetterStopLoss!.call(inputStopLoss, "37");
+      const eventStopLoss = new Event("input", { bubbles: true });
+      inputStopLoss.dispatchEvent(eventStopLoss);
 
       const confirm = await waitForElementByXpath('//button[text()="Confirm"]');
       confirm.click();
