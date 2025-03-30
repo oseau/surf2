@@ -100,14 +100,14 @@ const bindKeys = async () => {
         window.HTMLInputElement.prototype,
         "value",
       )!.set;
-      nativeInputValueSetterStopLoss!.call(inputStopLoss, "37");
+      nativeInputValueSetterStopLoss!.call(inputStopLoss, "55");
       const eventStopLoss = new Event("input", { bubbles: true });
       inputStopLoss.dispatchEvent(eventStopLoss);
 
       const confirm = await waitForElementByXpath('//button[text()="Confirm"]');
       confirm.click();
     } else if (e.key === "2") {
-      // number 2 to take profit 15%
+      // number 2 to take profit 30%
       e.preventDefault(); // prevent inserting 2 into input field
       // Create a race between the two element queries to use whichever returns first
       const [element, elType] = await Promise.race([
@@ -133,7 +133,7 @@ const bindKeys = async () => {
         window.HTMLInputElement.prototype,
         "value",
       )!.set;
-      nativeInputValueSetterTakeProfit!.call(inputTakeProfit, "15");
+      nativeInputValueSetterTakeProfit!.call(inputTakeProfit, "30");
       const eventTakeProfit = new Event("input", { bubbles: true });
       inputTakeProfit.dispatchEvent(eventTakeProfit);
 
@@ -144,7 +144,7 @@ const bindKeys = async () => {
         window.HTMLInputElement.prototype,
         "value",
       )!.set;
-      nativeInputValueSetterStopLoss!.call(inputStopLoss, "37");
+      nativeInputValueSetterStopLoss!.call(inputStopLoss, "55");
       const eventStopLoss = new Event("input", { bubbles: true });
       inputStopLoss.dispatchEvent(eventStopLoss);
 
