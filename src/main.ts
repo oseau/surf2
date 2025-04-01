@@ -93,17 +93,6 @@ const bindKeys = async () => {
       const eventTakeProfit = new Event("input", { bubbles: true });
       inputTakeProfit.dispatchEvent(eventTakeProfit);
 
-      const inputStopLoss = (await waitForElementByXpath(
-        '(//*[starts-with(@id,"dialog")]//input)[4]',
-      )) as HTMLInputElement;
-      const nativeInputValueSetterStopLoss = Object.getOwnPropertyDescriptor(
-        window.HTMLInputElement.prototype,
-        "value",
-      )!.set;
-      nativeInputValueSetterStopLoss!.call(inputStopLoss, "55");
-      const eventStopLoss = new Event("input", { bubbles: true });
-      inputStopLoss.dispatchEvent(eventStopLoss);
-
       const confirm = await waitForElementByXpath('//button[text()="Confirm"]');
       confirm.click();
     } else if (e.key === "2") {
@@ -136,17 +125,6 @@ const bindKeys = async () => {
       nativeInputValueSetterTakeProfit!.call(inputTakeProfit, "30");
       const eventTakeProfit = new Event("input", { bubbles: true });
       inputTakeProfit.dispatchEvent(eventTakeProfit);
-
-      const inputStopLoss = (await waitForElementByXpath(
-        '(//*[starts-with(@id,"dialog")]//input)[4]',
-      )) as HTMLInputElement;
-      const nativeInputValueSetterStopLoss = Object.getOwnPropertyDescriptor(
-        window.HTMLInputElement.prototype,
-        "value",
-      )!.set;
-      nativeInputValueSetterStopLoss!.call(inputStopLoss, "55");
-      const eventStopLoss = new Event("input", { bubbles: true });
-      inputStopLoss.dispatchEvent(eventStopLoss);
 
       const confirm = await waitForElementByXpath('//button[text()="Confirm"]');
       confirm.click();
