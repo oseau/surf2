@@ -62,6 +62,24 @@ const bindKeys = async () => {
       e.preventDefault();
       const short = await waitForElementByXpath('//button[text()="Short"]');
       short.click();
+    } else if (e.key === "`") {
+      // "`" to update our bet size to 1%
+      const total = (
+        await waitForElementByXpath(
+          '//nav//*[contains(@id, "hover-card")]/div[1]/text()[normalize-space()]',
+        )
+      ).textContent;
+      const betSize = parseInt(total!) / 100;
+      const inputBetSize = (await waitForElementByXpath(
+        "(//main//input)[1]",
+      )) as HTMLInputElement;
+      const nativeInputValueSetterBetSize = Object.getOwnPropertyDescriptor(
+        window.HTMLInputElement.prototype,
+        "value",
+      )!.set;
+      nativeInputValueSetterBetSize!.call(inputBetSize, betSize);
+      const eventBetSize = new Event("input", { bubbles: true });
+      inputBetSize.dispatchEvent(eventBetSize);
     } else if (e.key === "1") {
       // number 1 to take profit 1%
       e.preventDefault(); // prevent inserting 1 into input field
