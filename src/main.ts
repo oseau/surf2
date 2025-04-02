@@ -1,5 +1,15 @@
 // @ts-ignore isolatedModules
 
+declare const unsafeWindow: Window;
+
+// Initialize isTesting on unsafeWindow
+(unsafeWindow as any).doneTestBuy = false;
+(unsafeWindow as any).doneTestSell = false;
+
+const isDoneTesting = (testType: "buy" | "sell") => {
+  return (unsafeWindow as any)[`doneTest${testType === "buy" ? "Buy" : "Sell"}`];
+};
+
 // get div by content
 const waitForElementByXpath = (xpath: string): Promise<HTMLElement> => {
   return new Promise((resolve) => {
@@ -57,11 +67,19 @@ const bindKeys = async () => {
     if (e.key === "ArrowLeft") {
       e.preventDefault();
       const long = await waitForElementByXpath('//button[text()="Long"]');
-      long.click();
+      if (!isDoneTesting("buy")) {
+        console.log("doing test for long button, we got element:", long);
+      } else {
+        long.click();
+      }
     } else if (e.key === "ArrowRight") {
       e.preventDefault();
       const short = await waitForElementByXpath('//button[text()="Short"]');
-      short.click();
+      if (!isDoneTesting("buy")) {
+        console.log("doing test for short button, we got element:", short);
+      } else {
+        short.click();
+      }
     } else if (e.key === "`") {
       // "`" to update our bet size to 1%
       const total = (
@@ -70,6 +88,10 @@ const bindKeys = async () => {
         )
       ).textContent;
       const betSize = parseInt(total!) / 100;
+      if (!isDoneTesting("buy")) {
+        console.log("doing test for bet size, we will insert:", betSize);
+        return;
+      }
       const inputBetSize = (await waitForElementByXpath(
         "(//main//input)[1]",
       )) as HTMLInputElement;
@@ -112,7 +134,11 @@ const bindKeys = async () => {
       inputTakeProfit.dispatchEvent(eventTakeProfit);
 
       const confirm = await waitForElementByXpath('//button[text()="Confirm"]');
-      confirm.click();
+      if (!isDoneTesting("sell")) {
+        console.log("doing test for confirm button, we got element:", confirm);
+      } else {
+        confirm.click();
+      }
     } else if (e.key === "2") {
       // number 2 to take profit 100%
       e.preventDefault(); // prevent inserting 2 into input field
@@ -145,12 +171,20 @@ const bindKeys = async () => {
       inputTakeProfit.dispatchEvent(eventTakeProfit);
 
       const confirm = await waitForElementByXpath('//button[text()="Confirm"]');
-      confirm.click();
+      if (!isDoneTesting("sell")) {
+        console.log("doing test for confirm button, we got element:", confirm);
+      } else {
+        confirm.click();
+      }
     } else if (e.key === " ") {
       // space to sell market
       e.preventDefault(); // prevent scrolling
       const market = await waitForElementByXpath('//p[text()="Market"]');
-      market.click();
+      if (!isDoneTesting("sell")) {
+        console.log("doing test for market button, we got element:", market);
+      } else {
+        market.click();
+      }
     }
   });
 };
