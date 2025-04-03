@@ -7,7 +7,9 @@ declare const unsafeWindow: Window;
 (unsafeWindow as any).doneTestSell = false;
 
 const isDoneTesting = (testType: "buy" | "sell") => {
-  return (unsafeWindow as any)[`doneTest${testType === "buy" ? "Buy" : "Sell"}`];
+  return (unsafeWindow as any)[
+    `doneTest${testType === "buy" ? "Buy" : "Sell"}`
+  ];
 };
 
 // get div by content
@@ -64,6 +66,7 @@ const bindKeys = async () => {
     if (document.activeElement instanceof HTMLInputElement) {
       return;
     }
+    console.log("e.key:", e.key);
     if (e.key === "ArrowLeft") {
       e.preventDefault();
       const long = await waitForElementByXpath('//button[text()="Long"]');
@@ -112,7 +115,7 @@ const bindKeys = async () => {
           "tpSl",
         ]),
         waitForElementByXpath(
-          '(//*[starts-with(@id,"tabs")]//*[local-name() = "svg"])[3]',
+          '(//*[starts-with(@id,"tabs")]//tr//*[local-name() = "svg"])[3]',
         ).then((el) => [el, "edit"]),
       ]);
       if (elType === "tpSl") {
@@ -149,7 +152,7 @@ const bindKeys = async () => {
           "tpSl",
         ]),
         waitForElementByXpath(
-          '(//*[starts-with(@id,"tabs")]//*[local-name() = "svg"])[3]',
+          '(//*[starts-with(@id,"tabs")]//tr//*[local-name() = "svg"])[3]',
         ).then((el) => [el, "edit"]),
       ]);
       if (elType === "tpSl") {
