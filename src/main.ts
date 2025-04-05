@@ -66,7 +66,6 @@ const bindKeys = async () => {
     if (document.activeElement instanceof HTMLInputElement) {
       return;
     }
-    console.log("e.key:", e.key);
     if (e.key === "ArrowLeft") {
       e.preventDefault();
       const long = await waitForElementByXpath('//button[text()="Long"]');
