@@ -83,13 +83,13 @@ const bindKeys = async () => {
         short.click();
       }
     } else if (e.key === "`") {
-      // "`" to update our bet size to 1%
+      // "`" to update our bet size to 0.5%
       const total = (
         await waitForElementByXpath(
           '//nav//*[contains(@id, "hover-card")]/div[1]/text()[normalize-space()]',
         )
       ).textContent;
-      const betSize = parseInt(total!) / 100;
+      const betSize = parseInt(total!) / 200;
       if (!isDoneTesting("buy")) {
         console.log("doing test for bet size, we will insert:", betSize);
         return;
