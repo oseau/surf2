@@ -142,7 +142,7 @@ const bindKeys = async () => {
         confirm.click();
       }
     } else if (e.key === "2") {
-      // number 2 to take profit 129%
+      // number 2 to take profit 65%
       e.preventDefault(); // prevent inserting 2 into input field
       // Create a race between the two element queries to use whichever returns first
       const [element, elType] = await Promise.race([
@@ -168,7 +168,7 @@ const bindKeys = async () => {
         window.HTMLInputElement.prototype,
         "value",
       )!.set;
-      nativeInputValueSetterTakeProfit!.call(inputTakeProfit, "129");
+      nativeInputValueSetterTakeProfit!.call(inputTakeProfit, "65");
       const eventTakeProfit = new Event("input", { bubbles: true });
       inputTakeProfit.dispatchEvent(eventTakeProfit);
 
