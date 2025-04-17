@@ -173,8 +173,11 @@ const bindKeys = async () => {
           '//nav//*[contains(@id, "hover-card")]/div[1]/text()[normalize-space()]',
         )
       ).textContent;
-      const betSize = parseInt(total!) / 200;
-      nativeInputValueSetterTakeProfit!.call(inputTakeProfit, betSize * 0.66);
+      const betSize = Math.round((parseInt(total!) / 200) * 100) / 100;
+      nativeInputValueSetterTakeProfit!.call(
+        inputTakeProfit,
+        Math.round(betSize * 0.66 * 100) / 100,
+      );
       const eventTakeProfit = new Event("input", { bubbles: true });
       inputTakeProfit.dispatchEvent(eventTakeProfit);
 
