@@ -1,6 +1,4 @@
-import json
 import os
-import signal
 import statistics
 import subprocess
 import time
@@ -14,7 +12,6 @@ from rich.table import Table
 candles = {}  # start timestamp -> latest volume
 TRACK_COUNT = 18
 console = Console()
-info = None
 
 
 def render_candles():
@@ -22,10 +19,13 @@ def render_candles():
         oldest = sorted(candles.keys())[0]
         del candles[oldest]
 
-    latest = sorted(candles.keys())[-1]
-    avg = statistics.fmean(v for k, v in candles.items() if k != latest)
-    if candles[latest] > 10 * avg:
-        alert()
+    if len(candles) > 1:
+        latest = sorted(candles.keys())[-1]
+        avg = statistics.fmean(v for k, v in candles.items() if k != latest) if len(candles)>1 else 0
+        if avg > 0 and candles[latest] > 10 * avg:
+            alert()
+    else:
+        avg = 0
 
     # Create a table for better formatting
     table = Table(show_header=False, box=None)
@@ -45,19 +45,19 @@ def add_candle(c):
     candles[timestamp] = volume
 
 
-def save_and_exit(signum, frame):
-    with open("latest.json", "w") as fp:
-        json.dump(candles, fp)
-    os._exit(0)  # Force immediate exit
+
+def init_candles(info):
+    global candles
+    end = int(time.time()*1000)
+    start = end - 1000*60*(TRACK_COUNT+10)
+    resp = info.candles_snapshot('BTC', '1m', start, end)
+    for c in resp:
+        candles[str(c["t"])] = float(c["v"])
 
 
 def main():
-    global candles, info
-    with open("latest.json", "r") as f:
-        candles = json.load(f)
-
     info = Info(constants.MAINNET_API_URL)
-    signal.signal(signal.SIGINT, save_and_exit)
+    init_candles(info)
 
     def update_display(c):
         add_candle(c)
