@@ -1,4 +1,5 @@
 import os
+import signal
 import statistics
 import subprocess
 import time
@@ -21,7 +22,11 @@ def render_candles():
 
     if len(candles) > 1:
         latest = sorted(candles.keys())[-1]
-        avg = statistics.fmean(v for k, v in candles.items() if k != latest) if len(candles)>1 else 0
+        avg = (
+            statistics.fmean(v for k, v in candles.items() if k != latest)
+            if len(candles) > 1
+            else 0
+        )
         if avg > 0 and candles[latest] > 10 * avg:
             alert()
     else:
@@ -45,12 +50,11 @@ def add_candle(c):
     candles[timestamp] = volume
 
 
-
 def init_candles(info):
     global candles
-    end = int(time.time()*1000)
-    start = end - 1000*60*(TRACK_COUNT+10)
-    resp = info.candles_snapshot('BTC', '1m', start, end)
+    end = int(time.time() * 1000)
+    start = end - 1000 * 60 * (TRACK_COUNT + 10)
+    resp = info.candles_snapshot("BTC", "1m", start, end)
     for c in resp:
         candles[str(c["t"])] = float(c["v"])
 
@@ -59,18 +63,23 @@ def main():
     info = Info(constants.MAINNET_API_URL)
     init_candles(info)
 
-    def update_display(c):
-        add_candle(c)
-        live.update(render_candles())
+    def handle_exit(signum, frame):
+        os._exit(0)  # Force immediate exit
 
-    info.subscribe(
-        {"type": "candle", "coin": "BTC", "interval": "1m"},
-        update_display,
-    )
+    signal.signal(signal.SIGINT, handle_exit)
 
     with Live(render_candles(), refresh_per_second=4, console=console) as live:
-        while True:
-            time.sleep(0.1)
+
+        def update_display(c):
+            add_candle(c)
+            live.update(render_candles())
+
+        info.subscribe(
+            {"type": "candle", "coin": "BTC", "interval": "1m"},
+            update_display,
+        )
+
+        signal.pause()  # Block until Ctrl+C
 
 
 def alert():
