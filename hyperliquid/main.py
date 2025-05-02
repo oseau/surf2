@@ -20,7 +20,7 @@ def render_candles():
     avg = get_avg()
     if avg > 0 and volume > 10 * avg:
         alert()
-    stats = f"avg: {avg:.1f}, threshold: {10 * avg:.1f}"
+    stats = f"avg: {avg:.1f}, threshold: {10 * avg:<10.1f}"
     print("\033[F\033[K", end="")  # Move up and clear both lines
     print(f"{values}\n{stats}", end="", flush=True)
 
