@@ -47,15 +47,21 @@ def init_candles(info):
 
 
 def alert():
-    subprocess.Popen([
-        "terminal-notifier",
-        "-message",
-        "!!!",
-        "-title",
-        "💰",
-        "-sound",
-        "Frog",
-    ])
+    procs = [
+        subprocess.Popen([
+            "terminal-notifier",
+            "-message",
+            "!!!",
+            "-title",
+            "💰",
+        ]),
+        subprocess.Popen([
+            "afplay",
+            "./loud.aiff",
+        ]),  # system notification volume too low
+    ]
+    for proc in procs:
+        proc.wait()
 
 
 def main():
