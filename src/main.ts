@@ -268,7 +268,6 @@ const bindKeys = async () => {
         let row;
         const cancels = [];
         while ((row = rows.iterateNext())) {
-          console.log(row);
           cancels.push(
             await waitForElementByXpath('.//button[text()="Cancel"]', row),
           );
@@ -277,10 +276,17 @@ const bindKeys = async () => {
           cancel.click();
         }
       } else if (e.key === " ") {
-        // space to sell market for the first order
+        // space to sell all market
         e.preventDefault(); // prevent scrolling
-        const market = await waitForElementByXpath('//p[text()="Market"]');
-        market.click();
+        const rows = await waitForElementsByXpath('//p[text()="Market"]');
+        let row;
+        const markets = [];
+        while ((row = rows.iterateNext())) {
+          markets.push(row);
+        }
+        for (let market of markets) {
+          (market as HTMLElement).click();
+        }
       }
     },
     true,

@@ -7,7 +7,7 @@ short-cuts for https://v2.surf.one/
 - `e` `u` to switch tab
 - `j` to reduce deleverageing
 - `k` to clear open orders
-- `space` to close first position using market price
+- `space` to close all positions using market price
 
 ## dev
 
