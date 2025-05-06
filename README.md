@@ -2,8 +2,18 @@
 
 short-cuts for https://v2.surf.one/
 
-- `left-arrow` to switch to `long`
-- `right-arrow` to `short`
-- `1` to add a position in current selected direction
-- `2` to set TP to 5%
-- `space` to close position using market price
+- `left-arrow` to `open long`
+- `right-arrow` to `open short`
+- `e` `u` to switch tab
+- `j` to reduce deleverageing
+- `k` to clear open orders
+- `space` to close first position using market price
+
+## dev
+
+using https://github.com/lisonge/vite-plugin-monkey
+
+```bash
+make tampermonkey # build
+make dev-tampermonkey # with hot reloading
+```

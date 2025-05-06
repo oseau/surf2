@@ -1,24 +1,62 @@
 // @ts-ignore isolatedModules
 
-declare const unsafeWindow: Window;
-
-// Initialize isTesting on unsafeWindow
-(unsafeWindow as any).doneTestBuy = false;
-(unsafeWindow as any).doneTestSell = false;
-
-const isDoneTesting = (testType: "buy" | "sell") => {
-  return (unsafeWindow as any)[
-    `doneTest${testType === "buy" ? "Buy" : "Sell"}`
-  ];
-};
-
-// get div by content
-const waitForElementByXpath = (xpath: string): Promise<HTMLElement> => {
+const waitForElementsByXpath = (xpath: string): Promise<XPathResult> => {
   return new Promise((resolve) => {
     if (
       document.evaluate(
         xpath,
         document,
+        null,
+        XPathResult.ORDERED_NODE_ITERATOR_TYPE,
+        null,
+      )
+    ) {
+      return resolve(
+        document.evaluate(
+          xpath,
+          document,
+          null,
+          XPathResult.ORDERED_NODE_ITERATOR_TYPE,
+          null,
+        ),
+      );
+    }
+    const observer = new MutationObserver(() => {
+      if (
+        document.evaluate(
+          xpath,
+          document,
+          null,
+          XPathResult.ORDERED_NODE_ITERATOR_TYPE,
+          null,
+        )
+      ) {
+        observer.disconnect();
+        resolve(
+          document.evaluate(
+            xpath,
+            document,
+            null,
+            XPathResult.ORDERED_NODE_ITERATOR_TYPE,
+            null,
+          ),
+        );
+      }
+    });
+    observer.observe(document.body, { childList: true, subtree: true });
+  });
+};
+
+// get div by content
+const waitForElementByXpath = (
+  xpath: string,
+  base: Node = document,
+): Promise<HTMLElement> => {
+  return new Promise((resolve) => {
+    if (
+      document.evaluate(
+        xpath,
+        base,
         null,
         XPathResult.FIRST_ORDERED_NODE_TYPE,
         null,
@@ -27,7 +65,7 @@ const waitForElementByXpath = (xpath: string): Promise<HTMLElement> => {
       return resolve(
         document.evaluate(
           xpath,
-          document,
+          base,
           null,
           XPathResult.FIRST_ORDERED_NODE_TYPE,
           null,
@@ -38,7 +76,7 @@ const waitForElementByXpath = (xpath: string): Promise<HTMLElement> => {
       if (
         document.evaluate(
           xpath,
-          document,
+          base,
           null,
           XPathResult.FIRST_ORDERED_NODE_TYPE,
           null,
@@ -48,7 +86,7 @@ const waitForElementByXpath = (xpath: string): Promise<HTMLElement> => {
         resolve(
           document.evaluate(
             xpath,
-            document,
+            base,
             null,
             XPathResult.FIRST_ORDERED_NODE_TYPE,
             null,
@@ -60,144 +98,193 @@ const waitForElementByXpath = (xpath: string): Promise<HTMLElement> => {
   });
 };
 
+// get index of tab
+const getIdx = async () => {
+  const currentTabText = (
+    await waitForElementByXpath(
+      '//main/div/div[3]//div[@data-scope="tabs" and @data-part="list"]//button[@data-selected]',
+    )
+  ).textContent!;
+  let idx = 0;
+  if (currentTabText === "Public Trades") {
+    idx = 1;
+  } else if (currentTabText.startsWith("Positions ")) {
+    idx = 2;
+  } else if (currentTabText.startsWith("Open Orders ")) {
+    idx = 3;
+  } else if (currentTabText === "Trade History") {
+    idx = 4;
+  } else if (currentTabText === "Transaction History") {
+    idx = 5;
+  }
+  return idx;
+};
+
 const bindKeys = async () => {
-  document.addEventListener("keydown", async (e) => {
-    // ignore if we are in a input field
-    if (document.activeElement instanceof HTMLInputElement) {
-      return;
-    }
-    if (e.key === "ArrowLeft") {
-      e.preventDefault();
-      const long = await waitForElementByXpath('//button[text()="Long"]');
-      if (!isDoneTesting("buy")) {
-        console.log("doing test for long button, we got element:", long);
-      } else {
-        long.click();
-      }
-    } else if (e.key === "ArrowRight") {
-      e.preventDefault();
-      const short = await waitForElementByXpath('//button[text()="Short"]');
-      if (!isDoneTesting("buy")) {
-        console.log("doing test for short button, we got element:", short);
-      } else {
-        short.click();
-      }
-    } else if (e.key === "`") {
-      // "`" to update our bet size to 0.5%
-      const total = (
-        await waitForElementByXpath(
-          '//nav//*[contains(@id, "hover-card")]/div[1]/text()[normalize-space()]',
-        )
-      ).textContent;
-      const betSize = parseInt(total!) / 200;
-      if (!isDoneTesting("buy")) {
-        console.log("doing test for bet size, we will insert:", betSize);
+  document.addEventListener(
+    "keydown",
+    async (e) => {
+      // ignore if we are in a input field
+      if (document.activeElement instanceof HTMLInputElement) {
         return;
       }
-      const inputBetSize = (await waitForElementByXpath(
-        "(//main//input)[1]",
-      )) as HTMLInputElement;
-      const nativeInputValueSetterBetSize = Object.getOwnPropertyDescriptor(
-        window.HTMLInputElement.prototype,
-        "value",
-      )!.set;
-      nativeInputValueSetterBetSize!.call(inputBetSize, betSize);
-      const eventBetSize = new Event("input", { bubbles: true });
-      inputBetSize.dispatchEvent(eventBetSize);
-    } else if (e.key === "1") {
-      // number 1 to take profit 0.01%
-      e.preventDefault(); // prevent inserting 1 into input field
-      // Create a race between the two element queries to use whichever returns first
-      const [element, elType] = await Promise.race([
-        waitForElementByXpath('//div[text()="+ Add"]').then((el) => [
-          el,
-          "tpSl",
-        ]),
-        waitForElementByXpath(
-          '(//*[starts-with(@id,"tabs")]//tr//*[local-name() = "svg"])[3]',
-        ).then((el) => [el, "edit"]),
-      ]);
-      if (elType === "tpSl") {
-        (element as HTMLElement).click();
-      } else {
-        (element as HTMLElement).dispatchEvent(
-          new Event("click", { bubbles: true }),
+      if (e.key === "ArrowLeft") {
+        e.preventDefault();
+        const long = await waitForElementByXpath('//button[text()="Long"]');
+        long.click();
+        if (document.activeElement instanceof HTMLElement) {
+          document.activeElement.blur();
+        }
+      } else if (e.key === "ArrowRight") {
+        e.preventDefault();
+        const short = await waitForElementByXpath('//button[text()="Short"]');
+        short.click();
+        if (document.activeElement instanceof HTMLElement) {
+          document.activeElement.blur();
+        }
+      } else if (e.key === "`") {
+        // "`" to update our bet size to 0.5%
+        const total = (
+          await waitForElementByXpath(
+            '//nav//*[contains(@id, "hover-card")]/div[1]/text()[normalize-space()]',
+          )
+        ).textContent;
+        const betSize = parseInt(total!) / 200;
+        const inputBetSize = (await waitForElementByXpath(
+          "(//main//input)[1]",
+        )) as HTMLInputElement;
+        const nativeInputValueSetterBetSize = Object.getOwnPropertyDescriptor(
+          window.HTMLInputElement.prototype,
+          "value",
+        )!.set;
+        nativeInputValueSetterBetSize!.call(inputBetSize, betSize);
+        const eventBetSize = new Event("input", { bubbles: true });
+        inputBetSize.dispatchEvent(eventBetSize);
+      } else if (e.key === "e") {
+        // "e" to select previous tab
+        const currentTabText = (
+          await waitForElementByXpath(
+            '//main/div/div[3]//div[@data-scope="tabs" and @data-part="list"]//button[@data-selected]',
+          )
+        ).textContent;
+        if (currentTabText !== "Public Trades") {
+          (
+            await waitForElementByXpath(
+              '//main/div/div[3]//div[@data-scope="tabs" and @data-part="list"]//button[@data-selected]/preceding-sibling::*[1]',
+            )
+          ).click();
+        }
+      } else if (e.key === "u") {
+        // "u" to select next tab
+        const currentTabText = (
+          await waitForElementByXpath(
+            '//main/div/div[3]//div[@data-scope="tabs" and @data-part="list"]//button[@data-selected]',
+          )
+        ).textContent;
+        if (currentTabText !== "Transaction History") {
+          (
+            await waitForElementByXpath(
+              '//main/div/div[3]//div[@data-scope="tabs" and @data-part="list"]//button[@data-selected]/following-sibling::*[1]',
+            )
+          ).click();
+        }
+      } else if (e.key === "j") {
+        // "j" to sell over boughts when we get back from lose to even
+        const idx = await getIdx();
+        if (idx !== 2) {
+          console.log("check idx!");
+          return;
+        }
+        const rows = await waitForElementsByXpath(
+          `//main/div/div[3]//div[@data-scope="tabs" and @data-part="content"][${idx}]//tbody/tr`,
         );
-      }
-      const inputTakeProfit = (await waitForElementByXpath(
-        '(//*[starts-with(@id,"dialog")]//input)[2]',
-      )) as HTMLInputElement;
-      const nativeInputValueSetterTakeProfit = Object.getOwnPropertyDescriptor(
-        window.HTMLInputElement.prototype,
-        "value",
-      )!.set;
-      nativeInputValueSetterTakeProfit!.call(inputTakeProfit, "0.01");
-      const eventTakeProfit = new Event("input", { bubbles: true });
-      inputTakeProfit.dispatchEvent(eventTakeProfit);
+        let row;
+        while ((row = rows.iterateNext())) {
+          const percentage = (
+            await waitForElementByXpath(
+              './/td//p[starts-with(text(),"(")]',
+              row,
+            )
+          ).textContent!;
+          if (!percentage.startsWith("(-")) {
+            continue;
+          }
+          const leverage = parseInt(
+            (
+              await waitForElementByXpath(
+                './/td//p[substring(text(), string-length(text()) - string-length("x") + 1) = "x"]',
+                row,
+              )
+            ).textContent!.replaceAll(",", ""),
+          );
+          const size = parseInt(
+            (
+              await waitForElementByXpath(
+                './/td[starts-with(text(), "$ ")]',
+                row,
+              )
+            )
+              .textContent!.replaceAll(",", "")
+              .substring(1),
+          );
+          const entryPrice = parseFloat(
+            (
+              await waitForElementByXpath(".//td[5]//p", row)
+            ).textContent!.replaceAll(",", ""),
+          );
+          (
+            await waitForElementByXpath('.//td//p[text()="Limit"]', row)
+          ).click();
 
-      const confirm = await waitForElementByXpath('//button[text()="Confirm"]');
-      if (!isDoneTesting("sell")) {
-        console.log("doing test for confirm button, we got element:", confirm);
-      } else {
-        confirm.click();
-      }
-    } else if (e.key === "2") {
-      // number 2 to take profit 66%
-      e.preventDefault(); // prevent inserting 2 into input field
-      // Create a race between the two element queries to use whichever returns first
-      const [element, elType] = await Promise.race([
-        waitForElementByXpath('//div[text()="+ Add"]').then((el) => [
-          el,
-          "tpSl",
-        ]),
-        waitForElementByXpath(
-          '(//*[starts-with(@id,"tabs")]//tr//*[local-name() = "svg"])[3]',
-        ).then((el) => [el, "edit"]),
-      ]);
-      if (elType === "tpSl") {
-        (element as HTMLElement).click();
-      } else {
-        (element as HTMLElement).dispatchEvent(
-          new Event("click", { bubbles: true }),
+          const inputPrice = (await waitForElementByXpath(
+            '(//*[starts-with(@id,"dialog")]//input)[1]',
+          )) as HTMLInputElement;
+          const inputSize = (await waitForElementByXpath(
+            '(//*[starts-with(@id,"dialog")]//input)[2]',
+          )) as HTMLInputElement;
+          const nativeInputValueSetter = Object.getOwnPropertyDescriptor(
+            window.HTMLInputElement.prototype,
+            "value",
+          )!.set;
+          nativeInputValueSetter!.call(inputPrice, entryPrice);
+          inputPrice.dispatchEvent(new Event("input", { bubbles: true }));
+          nativeInputValueSetter!.call(inputSize, size - leverage);
+          inputSize.dispatchEvent(new Event("input", { bubbles: true }));
+
+          (await waitForElementByXpath('//button[text()="Close"]')).click();
+
+          return; // since we click "Limit", the doc has mutated, following loop can not be executed.
+        }
+      } else if (e.key === "k") {
+        // "k" to clear open orders
+        const idx = await getIdx();
+        if (idx !== 3) {
+          console.log("check idx!");
+          return;
+        }
+        const rows = await waitForElementsByXpath(
+          `//main/div/div[3]//div[@data-scope="tabs" and @data-part="content"][${idx}]//tbody/tr`,
         );
-      }
-      const inputTakeProfit = (await waitForElementByXpath(
-        '(//*[starts-with(@id,"dialog")]//input)[2]',
-      )) as HTMLInputElement;
-      const nativeInputValueSetterTakeProfit = Object.getOwnPropertyDescriptor(
-        window.HTMLInputElement.prototype,
-        "value",
-      )!.set;
-      const total = (
-        await waitForElementByXpath(
-          '//nav//*[contains(@id, "hover-card")]/div[1]/text()[normalize-space()]',
-        )
-      ).textContent;
-      const betSize = Math.round((parseInt(total!) / 200) * 100) / 100;
-      nativeInputValueSetterTakeProfit!.call(
-        inputTakeProfit,
-        Math.round(betSize * 0.66 * 100) / 100,
-      );
-      const eventTakeProfit = new Event("input", { bubbles: true });
-      inputTakeProfit.dispatchEvent(eventTakeProfit);
-
-      const confirm = await waitForElementByXpath('//button[text()="Confirm"]');
-      if (!isDoneTesting("sell")) {
-        console.log("doing test for confirm button, we got element:", confirm);
-      } else {
-        confirm.click();
-      }
-    } else if (e.key === " ") {
-      // space to sell market
-      e.preventDefault(); // prevent scrolling
-      const market = await waitForElementByXpath('//p[text()="Market"]');
-      if (!isDoneTesting("sell")) {
-        console.log("doing test for market button, we got element:", market);
-      } else {
+        let row;
+        const cancels = [];
+        while ((row = rows.iterateNext())) {
+          console.log(row);
+          cancels.push(
+            await waitForElementByXpath('.//button[text()="Cancel"]', row),
+          );
+        }
+        for (let cancel of cancels) {
+          cancel.click();
+        }
+      } else if (e.key === " ") {
+        // space to sell market for the first order
+        e.preventDefault(); // prevent scrolling
+        const market = await waitForElementByXpath('//p[text()="Market"]');
         market.click();
       }
-    }
-  });
+    },
+    true,
+  );
 };
 
 bindKeys();

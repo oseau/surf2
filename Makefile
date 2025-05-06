@@ -1,5 +1,8 @@
 SHELL := /usr/bin/env bash -o errexit -o pipefail -o nounset
 
+dev-tampermonkey: ## dev mode, with hot reloading
+	@pnpm run dev
+
 tampermonkey: ## build tampermonkey script, remember to re-import in chrome
 	@pnpm run build
 
