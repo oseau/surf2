@@ -206,9 +206,6 @@ const bindKeys = async () => {
               row,
             )
           ).textContent!;
-          if (!percentage.startsWith("(-")) {
-            continue;
-          }
           const betSize = parseInt(
             (
               (await waitForElementByXpath(
@@ -239,28 +236,34 @@ const bindKeys = async () => {
               await waitForElementByXpath(".//td[5]//p", row)
             ).textContent!.replaceAll(",", ""),
           );
-          (
-            await waitForElementByXpath('.//td//p[text()="Limit"]', row)
-          ).click();
+          const sizeToReduce = size - betSize * leverage;
+          if (
+            percentage.startsWith("(-") || // should reduce when we get back even
+            sizeToReduce > 0 // price move too fast, we already got back even
+          ) {
+            (
+              await waitForElementByXpath('.//td//p[text()="Limit"]', row)
+            ).click();
 
-          const inputPrice = (await waitForElementByXpath(
-            '(//*[starts-with(@id,"dialog")]//input)[1]',
-          )) as HTMLInputElement;
-          const inputSize = (await waitForElementByXpath(
-            '(//*[starts-with(@id,"dialog")]//input)[2]',
-          )) as HTMLInputElement;
-          const nativeInputValueSetter = Object.getOwnPropertyDescriptor(
-            window.HTMLInputElement.prototype,
-            "value",
-          )!.set;
-          nativeInputValueSetter!.call(inputPrice, entryPrice);
-          inputPrice.dispatchEvent(new Event("input", { bubbles: true }));
-          nativeInputValueSetter!.call(inputSize, size - betSize * leverage);
-          inputSize.dispatchEvent(new Event("input", { bubbles: true }));
+            const inputPrice = (await waitForElementByXpath(
+              '(//*[starts-with(@id,"dialog")]//input)[1]',
+            )) as HTMLInputElement;
+            const inputSize = (await waitForElementByXpath(
+              '(//*[starts-with(@id,"dialog")]//input)[2]',
+            )) as HTMLInputElement;
+            const nativeInputValueSetter = Object.getOwnPropertyDescriptor(
+              window.HTMLInputElement.prototype,
+              "value",
+            )!.set;
+            nativeInputValueSetter!.call(inputPrice, entryPrice);
+            inputPrice.dispatchEvent(new Event("input", { bubbles: true }));
+            nativeInputValueSetter!.call(inputSize, sizeToReduce);
+            inputSize.dispatchEvent(new Event("input", { bubbles: true }));
 
-          (await waitForElementByXpath('//button[text()="Close"]')).click();
+            (await waitForElementByXpath('//button[text()="Close"]')).click();
 
-          return; // since we click "Limit", the doc has mutated, following loop can not be executed.
+            return; // since we click "Limit", the doc has mutated, following loop can not be executed.
+          }
         }
       } else if (e.key === "k") {
         // "k" to clear open orders
