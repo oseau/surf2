@@ -209,6 +209,13 @@ const bindKeys = async () => {
           if (!percentage.startsWith("(-")) {
             continue;
           }
+          const betSize = parseInt(
+            (
+              (await waitForElementByXpath(
+                "(//main//input)[1]/@value",
+              )) as HTMLInputElement
+            ).value,
+          );
           const leverage = parseInt(
             (
               await waitForElementByXpath(
@@ -248,7 +255,7 @@ const bindKeys = async () => {
           )!.set;
           nativeInputValueSetter!.call(inputPrice, entryPrice);
           inputPrice.dispatchEvent(new Event("input", { bubbles: true }));
-          nativeInputValueSetter!.call(inputSize, size - leverage);
+          nativeInputValueSetter!.call(inputSize, size - betSize * leverage);
           inputSize.dispatchEvent(new Event("input", { bubbles: true }));
 
           (await waitForElementByXpath('//button[text()="Close"]')).click();
