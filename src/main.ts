@@ -200,12 +200,12 @@ const bindKeys = async () => {
         );
         let row;
         while ((row = rows.iterateNext())) {
-          const percentage = (
-            await waitForElementByXpath(
-              './/td//p[starts-with(text(),"(")]',
-              row,
-            )
-          ).textContent!;
+          // const percentage = (
+          //   await waitForElementByXpath(
+          //     './/td//p[starts-with(text(),"(")]',
+          //     row,
+          //   )
+          // ).textContent!;
           const betSize = parseInt(
             (
               (await waitForElementByXpath(
@@ -238,8 +238,10 @@ const bindKeys = async () => {
           );
           const sizeToReduce = size - betSize * leverage;
           if (
-            percentage.startsWith("(-") || // should reduce when we get back even
-            sizeToReduce > 0 // price move too fast, we already got back even
+            sizeToReduce > 0
+            // we need to reduce position size for this order
+            // 1. if percentage is negtive, we'll reduce when we get back even
+            // 2. if percentage is positive, we take profit now
           ) {
             (
               await waitForElementByXpath('.//td//p[text()="Limit"]', row)
