@@ -1,5 +1,9 @@
+import logging
+import os
+import signal
 import statistics
 import subprocess
+import sys
 import time
 
 from hyperliquid.info import Info
@@ -7,6 +11,25 @@ from hyperliquid.utils import constants
 
 candles = {}  # start timestamp -> latest volume
 TRACK_COUNT = 18
+
+
+class ConnectionLossHandler(logging.Handler):
+    def __init__(self, info):
+        super().__init__()
+        self.info = info
+
+    def emit(self, record):
+        if "Connection to remote host was lost. - goodbye" in record.getMessage():
+            print(record.getMessage())
+            for _ in range(3):
+                alert("error")
+            self.info.disconnect_websocket()
+            os._exit(1)
+
+
+def signal_handler(signum, frame):
+    print("\nbye~")
+    os._exit(0)
 
 
 def render_candles():
@@ -46,7 +69,7 @@ def init_candles(info):
         candles[str(c["t"])] = float(c["v"])
 
 
-def alert():
+def alert(sound="notification"):
     procs = [
         subprocess.Popen([
             "terminal-notifier",
@@ -57,7 +80,7 @@ def alert():
         ]),
         subprocess.Popen([
             "afplay",
-            "./loud.aiff",
+            f"./{sound}.mp3",
         ]),  # system notification volume too low
     ]
     for proc in procs:
@@ -65,9 +88,15 @@ def alert():
 
 
 def main():
+    signal.signal(signal.SIGINT, signal_handler)
     print("\n\n", end="")  # Print two blank lines to be overwritten later
     info = Info(constants.MAINNET_API_URL)
     init_candles(info)
+
+    # Set up logging with info instance
+    logging.basicConfig(level=logging.ERROR)
+    logger = logging.getLogger("websocket")
+    logger.addHandler(ConnectionLossHandler(info))
 
     info.subscribe(
         {"type": "candle", "coin": "BTC", "interval": "1m"},
