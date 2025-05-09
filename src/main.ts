@@ -305,4 +305,34 @@ const bindKeys = async () => {
   );
 };
 
+const scrollDown = async () => {
+  (
+    await waitForElementByXpath(
+      '//main/div/div[3]//div[@data-scope="tabs" and @data-part="list"]//button[starts-with(text(), "Positions (2")]',
+    )
+  ).click();
+  const idx = await getIdx();
+  if (idx !== 2) {
+    console.log("check idx!");
+    return;
+  }
+  const rows = await waitForElementsByXpath(
+    `//main/div/div[3]//div[@data-scope="tabs" and @data-part="content"][${idx}]//tbody/tr`,
+  );
+  let row, lastRow;
+  while ((row = rows.iterateNext())) {
+    if (row) {
+      lastRow = row;
+    }
+  }
+  if (lastRow) {
+    (lastRow as HTMLElement).scrollIntoView({
+      block: "end",
+      inline: "nearest",
+    });
+    window.scrollBy(0, 8);
+  }
+};
+
 bindKeys();
+scrollDown();
