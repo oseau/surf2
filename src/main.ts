@@ -189,7 +189,7 @@ const bindKeys = async () => {
           ).click();
         }
       } else if (e.key === "j") {
-        // "j" to sell over boughts when we get back from lose to even
+        // "j" to sell over boughts
         const idx = await getIdx();
         if (idx !== 2) {
           console.log("check idx!");
