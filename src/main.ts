@@ -128,14 +128,14 @@ const bindKeys = async () => {
       if (document.activeElement instanceof HTMLInputElement) {
         return;
       }
-      if (e.key === "ArrowLeft") {
+      if (e.key === "ArrowLeft" || e.key === "a") {
         e.preventDefault();
         const long = await waitForElementByXpath('//button[text()="Long"]');
         long.click();
         if (document.activeElement instanceof HTMLElement) {
           document.activeElement.blur();
         }
-      } else if (e.key === "ArrowRight") {
+      } else if (e.key === "ArrowRight" || e.key === "o") {
         e.preventDefault();
         const short = await waitForElementByXpath('//button[text()="Short"]');
         short.click();
@@ -287,6 +287,8 @@ const bindKeys = async () => {
         for (let cancel of cancels) {
           cancel.click();
         }
+      } else if (e.key === "p") {
+        window.location.reload();
       } else if (e.key === " ") {
         // space to sell all market
         e.preventDefault(); // prevent scrolling

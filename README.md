@@ -2,11 +2,12 @@
 
 short-cuts for https://v2.surf.one/
 
-- `left-arrow` to `open long`
-- `right-arrow` to `open short`
+- `left-arrow` or `a` to `open long`
+- `right-arrow` or `o` to `open short`
 - `e` `u` to switch tab
 - `j` to reduce position
 - `k` to clear open orders
+- `p` to refresh
 - `space` to close all positions using market price
 
 ## dev
