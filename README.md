@@ -2,6 +2,7 @@
 
 short-cuts for https://v2.surf.one/
 
+- `` ` `` to reset leverage and collateral to 1 to be safe
 - `left-arrow` or `a` to `open long`
 - `right-arrow` or `o` to `open short`
 - `e` `u` to switch tab

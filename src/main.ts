@@ -120,6 +120,11 @@ const getIdx = async () => {
   return idx;
 };
 
+const inputSetter = Object.getOwnPropertyDescriptor(
+  window.HTMLInputElement.prototype,
+  "value",
+)!.set!;
+
 const bindKeys = async () => {
   document.addEventListener(
     "keydown",
@@ -130,36 +135,45 @@ const bindKeys = async () => {
       }
       if (e.key === "ArrowLeft" || e.key === "a") {
         e.preventDefault();
-        const long = await waitForElementByXpath('//button[text()="Long"]');
-        long.click();
+        (await waitForElementByXpath('//button[text()="Long"]')).click();
         if (document.activeElement instanceof HTMLElement) {
           document.activeElement.blur();
         }
       } else if (e.key === "ArrowRight" || e.key === "o") {
         e.preventDefault();
-        const short = await waitForElementByXpath('//button[text()="Short"]');
-        short.click();
+        (await waitForElementByXpath('//button[text()="Short"]')).click();
         if (document.activeElement instanceof HTMLElement) {
           document.activeElement.blur();
         }
       } else if (e.key === "`") {
-        // "`" to update our bet size to 0.5%
-        const total = (
-          await waitForElementByXpath(
-            '//nav//*[contains(@id, "hover-card")]/div[1]/text()[normalize-space()]',
-          )
-        ).textContent;
-        const betSize = parseInt(total!) / 200;
+        // "`" to reset leverage & collateral to 1 to be safe
         const inputBetSize = (await waitForElementByXpath(
           "(//main//input)[1]",
         )) as HTMLInputElement;
-        const nativeInputValueSetterBetSize = Object.getOwnPropertyDescriptor(
-          window.HTMLInputElement.prototype,
-          "value",
-        )!.set;
-        nativeInputValueSetterBetSize!.call(inputBetSize, betSize);
-        const eventBetSize = new Event("input", { bubbles: true });
-        inputBetSize.dispatchEvent(eventBetSize);
+        inputSetter.call(inputBetSize, 1);
+        inputBetSize.dispatchEvent(new Event("input", { bubbles: true }));
+        const leverage = parseInt(
+          (
+            await waitForElementByXpath(
+              '//main/div/div[2]//button[substring(text(), string-length(text()) - string-length("x") + 1) = "x"]',
+            )
+          ).textContent!,
+        );
+        (
+          await waitForElementByXpath(
+            '//main/div/div[2]//button[substring(text(), string-length(text()) - string-length("x") + 1) = "x"]',
+          )
+        ).click();
+        const inputLeverage = (await waitForElementByXpath(
+          `//input[@value="${leverage}"]`,
+        )) as HTMLInputElement;
+        inputSetter.call(inputLeverage, 1);
+        inputLeverage.dispatchEvent(new Event("input", { bubbles: true }));
+        (
+          await waitForElementByXpath(
+            '//div[@data-scope="dialog" and @data-part="content" and @data-state="open"]//button[text()="Confirm"]',
+          )
+        ).click();
       } else if (e.key === "e") {
         // "e" to select previous tab
         const currentTabText = (
@@ -250,16 +264,12 @@ const bindKeys = async () => {
             const inputPrice = (await waitForElementByXpath(
               '(//*[starts-with(@id,"dialog")]//input)[1]',
             )) as HTMLInputElement;
+            inputSetter.call(inputPrice, entryPrice);
+            inputPrice.dispatchEvent(new Event("input", { bubbles: true }));
             const inputSize = (await waitForElementByXpath(
               '(//*[starts-with(@id,"dialog")]//input)[2]',
             )) as HTMLInputElement;
-            const nativeInputValueSetter = Object.getOwnPropertyDescriptor(
-              window.HTMLInputElement.prototype,
-              "value",
-            )!.set;
-            nativeInputValueSetter!.call(inputPrice, entryPrice);
-            inputPrice.dispatchEvent(new Event("input", { bubbles: true }));
-            nativeInputValueSetter!.call(inputSize, sizeToReduce);
+            inputSetter.call(inputSize, sizeToReduce);
             inputSize.dispatchEvent(new Event("input", { bubbles: true }));
 
             (await waitForElementByXpath('//button[text()="Close"]')).click();
