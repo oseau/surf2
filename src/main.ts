@@ -1,4 +1,23 @@
 // @ts-ignore isolatedModules
+import { sound } from "./notification";
+
+const sleep = (seconds = 1) =>
+  new Promise((resolve) => setTimeout(resolve, 1000 * seconds));
+
+const audioPlay = async () => {
+  const ctxAudio = new AudioContext();
+  const srcAudio = ctxAudio.createBufferSource();
+  const resp = await fetch(sound);
+  ctxAudio.decodeAudioData(
+    await resp.arrayBuffer(),
+    (buffer) => {
+      srcAudio.buffer = buffer;
+      srcAudio.connect(ctxAudio.destination);
+      srcAudio.start(0);
+    },
+    console.error,
+  );
+};
 
 const waitForElementsByXpath = (xpath: string): Promise<XPathResult> => {
   return new Promise((resolve) => {
@@ -214,12 +233,6 @@ const bindKeys = async () => {
         );
         let row;
         while ((row = rows.iterateNext())) {
-          // const percentage = (
-          //   await waitForElementByXpath(
-          //     './/td//p[starts-with(text(),"(")]',
-          //     row,
-          //   )
-          // ).textContent!;
           const betSize = parseInt(
             (
               (await waitForElementByXpath(
@@ -346,5 +359,46 @@ const scrollDown = async () => {
   }
 };
 
+let countNonWatchSeconds = 0;
+
+const watchPositions = async () => {
+  await sleep();
+  const idx = await getIdx();
+  if (countNonWatchSeconds % 60 === 30) {
+    console.log("test", { idx, countNonWatchSeconds });
+  }
+  if (idx !== 2) {
+    console.log("check idx!");
+    countNonWatchSeconds++;
+    if (countNonWatchSeconds >= 60) {
+      // 1min non watch alert
+      countNonWatchSeconds = 0;
+      for (let i = 0; i < 10; i++) {
+        audioPlay();
+        await sleep();
+      }
+    }
+    return await watchPositions();
+  }
+  countNonWatchSeconds = 0;
+  const rows = await waitForElementsByXpath(
+    `//main/div/div[3]//div[@data-scope="tabs" and @data-part="content"][${idx}]//tbody/tr`,
+  );
+  let row;
+  while ((row = rows.iterateNext())) {
+    const percentage = parseFloat(
+      (
+        await waitForElementByXpath('.//td//p[starts-with(text(),"(")]', row)
+      ).textContent!.replace("(", ""),
+    );
+    if (percentage <= -50) {
+      // -50% position alert
+      audioPlay();
+    }
+  }
+  await watchPositions();
+};
+
 bindKeys();
 scrollDown();
+watchPositions();
