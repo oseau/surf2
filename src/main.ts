@@ -391,8 +391,8 @@ const watchPositions = async () => {
         await waitForElementByXpath('.//td//p[starts-with(text(),"(")]', row)
       ).textContent!.replace("(", ""),
     );
-    if (percentage <= -20) {
-      // -20% position alert
+    if (percentage <= -50) {
+      // -50% position alert
       audioPlay();
     }
   }

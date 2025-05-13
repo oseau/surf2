@@ -11,7 +11,7 @@ short-cuts for https://v2.surf.one/
 - `p` to refresh
 - `space` to close all positions using market price
 
-alert when any position lost >= -20%
+alert when any position lost >= -XX%
 
 ## dev
 
