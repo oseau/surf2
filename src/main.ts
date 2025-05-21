@@ -1,8 +1,17 @@
 // @ts-ignore isolatedModules
 import { sound } from "./notification";
 
+const PERCENTAGE = 50; // -50% PNL take action & alert
+const PERCENTAGE_CLOSE_ALL = 80; // total percentages to sell all position and restart
+const MAX_SAVE_TRY = 5; // we only adding 5 consecutive times at most for any direction
+
 const sleep = (seconds = 1) =>
   new Promise((resolve) => setTimeout(resolve, 1000 * seconds));
+
+const randomInt = (
+  min: number,
+  max: number, // [min, max] both inclusive
+) => Math.floor(Math.random() * (max - min + 1) + min);
 
 const audioPlay = async () => {
   const ctxAudio = new AudioContext();
@@ -17,6 +26,19 @@ const audioPlay = async () => {
     },
     console.error,
   );
+};
+
+const openLong = async () => {
+  (await waitForElementByXpath('//button[text()="Long"]')).click();
+  if (document.activeElement instanceof HTMLElement) {
+    document.activeElement.blur();
+  }
+};
+const openShort = async () => {
+  (await waitForElementByXpath('//button[text()="Short"]')).click();
+  if (document.activeElement instanceof HTMLElement) {
+    document.activeElement.blur();
+  }
 };
 
 const waitForElementsByXpath = (xpath: string): Promise<XPathResult> => {
@@ -64,6 +86,157 @@ const waitForElementsByXpath = (xpath: string): Promise<XPathResult> => {
     });
     observer.observe(document.body, { childList: true, subtree: true });
   });
+};
+
+const parseRow = async (row: Node) => {
+  const betSize = parseInt(
+    (
+      (await waitForElementByXpath(
+        "(//main//input)[1]/@value",
+      )) as HTMLInputElement
+    ).value,
+  );
+  const leverage = parseInt(
+    (
+      await waitForElementByXpath(
+        './/td//p[substring(text(), string-length(text()) - string-length("x") + 1) = "x"]',
+        row,
+      )
+    ).textContent!.replaceAll(",", ""),
+  );
+  const size = parseInt(
+    (await waitForElementByXpath('.//td[starts-with(text(), "$ ")]', row))
+      .textContent!.replaceAll(",", "")
+      .substring(1),
+  );
+  const entryPrice = parseFloat(
+    (await waitForElementByXpath(".//td[5]//p", row)).textContent!.replaceAll(
+      ",",
+      "",
+    ),
+  );
+  const liqPrice = parseFloat(
+    (await waitForElementByXpath(".//td[7]//p", row)).textContent!.replaceAll(
+      ",",
+      "",
+    ),
+  );
+  const percentage = parseFloat(
+    (
+      await waitForElementByXpath('.//td//p[starts-with(text(),"(")]', row)
+    ).textContent!.replace("(", ""),
+  );
+  const direction = liqPrice <= entryPrice ? "long" : "short";
+  return {
+    betSize,
+    leverage,
+    size,
+    entryPrice,
+    liqPrice,
+    percentage,
+    direction: direction as "long" | "short",
+  };
+};
+
+const reducePosition = async () => {
+  const idx = await getIdx();
+  if (idx !== 2) {
+    console.log("check idx!");
+    return;
+  }
+  const rows = await waitForElementsByXpath(
+    `//main/div/div[3]//div[@data-scope="tabs" and @data-part="content"][${idx}]//tbody/tr`,
+  );
+  let row;
+  while ((row = rows.iterateNext())) {
+    const { size, betSize, leverage, entryPrice } = await parseRow(row);
+    const sizeToReduce = size - betSize * leverage;
+    if (
+      sizeToReduce > 0
+      // we need to reduce position size for this order
+      // 1. if percentage is negtive, we'll reduce when we get back even
+      // 2. if percentage is positive, we take profit now
+    ) {
+      (await waitForElementByXpath('.//td//p[text()="Limit"]', row)).click();
+
+      const inputPrice = (await waitForElementByXpath(
+        '(//*[starts-with(@id,"dialog")]//input)[1]',
+      )) as HTMLInputElement;
+      inputSetter.call(inputPrice, entryPrice);
+      inputPrice.dispatchEvent(new Event("input", { bubbles: true }));
+      const inputSize = (await waitForElementByXpath(
+        '(//*[starts-with(@id,"dialog")]//input)[2]',
+      )) as HTMLInputElement;
+      inputSetter.call(inputSize, sizeToReduce);
+      inputSize.dispatchEvent(new Event("input", { bubbles: true }));
+
+      (await waitForElementByXpath('//button[text()="Close"]')).click();
+
+      return; // since we click "Limit", the doc has mutated, following loop can not be executed.
+    }
+  }
+};
+
+const clearOpenOrders = async () => {
+  const idx = await getIdx();
+  if (idx !== 3) {
+    console.log("check idx!");
+    return;
+  }
+  const rows = await waitForElementsByXpath(
+    `//main/div/div[3]//div[@data-scope="tabs" and @data-part="content"][${idx}]//tbody/tr`,
+  );
+  let row;
+  const cancels = [];
+  while ((row = rows.iterateNext())) {
+    cancels.push(
+      await waitForElementByXpath('.//button[text()="Cancel"]', row),
+    );
+  }
+  for (let cancel of cancels) {
+    cancel.click();
+  }
+};
+
+const sellAllMarket = async () => {
+  const rows = await waitForElementsByXpath('//p[text()="Market"]');
+  let row;
+  const markets = [];
+  while ((row = rows.iterateNext())) {
+    markets.push(row);
+  }
+  for (let market of markets) {
+    (market as HTMLElement).click();
+  }
+};
+
+const switchLeft = async () => {
+  const currentTabText = (
+    await waitForElementByXpath(
+      '//main/div/div[3]//div[@data-scope="tabs" and @data-part="list"]//button[@data-selected]',
+    )
+  ).textContent;
+  if (currentTabText !== "Public Trades") {
+    (
+      await waitForElementByXpath(
+        '//main/div/div[3]//div[@data-scope="tabs" and @data-part="list"]//button[@data-selected]/preceding-sibling::*[1]',
+      )
+    ).click();
+  }
+};
+const switchRight = async () => {
+  const currentTabText = (
+    await waitForElementByXpath(
+      '//main/div/div[3]//div[@data-scope="tabs" and @data-part="list"]//button[@data-selected]',
+    )
+  ).textContent;
+  if (currentTabText !== "Transaction History") {
+    (
+      await waitForElementByXpath(
+        '//main/div/div[3]//div[@data-scope="tabs" and @data-part="list"]//button[@data-selected]/following-sibling::*[1]',
+      )
+    ).click();
+  }
 };
 
 // get div by content
@@ -195,135 +368,22 @@ const bindKeys = async () => {
         ).click();
       } else if (e.key === "e") {
         // "e" to select previous tab
-        const currentTabText = (
-          await waitForElementByXpath(
-            '//main/div/div[3]//div[@data-scope="tabs" and @data-part="list"]//button[@data-selected]',
-          )
-        ).textContent;
-        if (currentTabText !== "Public Trades") {
-          (
-            await waitForElementByXpath(
-              '//main/div/div[3]//div[@data-scope="tabs" and @data-part="list"]//button[@data-selected]/preceding-sibling::*[1]',
-            )
-          ).click();
-        }
+        await switchLeft();
       } else if (e.key === "u") {
         // "u" to select next tab
-        const currentTabText = (
-          await waitForElementByXpath(
-            '//main/div/div[3]//div[@data-scope="tabs" and @data-part="list"]//button[@data-selected]',
-          )
-        ).textContent;
-        if (currentTabText !== "Transaction History") {
-          (
-            await waitForElementByXpath(
-              '//main/div/div[3]//div[@data-scope="tabs" and @data-part="list"]//button[@data-selected]/following-sibling::*[1]',
-            )
-          ).click();
-        }
+        await switchRight();
       } else if (e.key === "j") {
         // "j" to sell over boughts
-        const idx = await getIdx();
-        if (idx !== 2) {
-          console.log("check idx!");
-          return;
-        }
-        const rows = await waitForElementsByXpath(
-          `//main/div/div[3]//div[@data-scope="tabs" and @data-part="content"][${idx}]//tbody/tr`,
-        );
-        let row;
-        while ((row = rows.iterateNext())) {
-          const betSize = parseInt(
-            (
-              (await waitForElementByXpath(
-                "(//main//input)[1]/@value",
-              )) as HTMLInputElement
-            ).value,
-          );
-          const leverage = parseInt(
-            (
-              await waitForElementByXpath(
-                './/td//p[substring(text(), string-length(text()) - string-length("x") + 1) = "x"]',
-                row,
-              )
-            ).textContent!.replaceAll(",", ""),
-          );
-          const size = parseInt(
-            (
-              await waitForElementByXpath(
-                './/td[starts-with(text(), "$ ")]',
-                row,
-              )
-            )
-              .textContent!.replaceAll(",", "")
-              .substring(1),
-          );
-          const entryPrice = parseFloat(
-            (
-              await waitForElementByXpath(".//td[5]//p", row)
-            ).textContent!.replaceAll(",", ""),
-          );
-          const sizeToReduce = size - betSize * leverage;
-          if (
-            sizeToReduce > 0
-            // we need to reduce position size for this order
-            // 1. if percentage is negtive, we'll reduce when we get back even
-            // 2. if percentage is positive, we take profit now
-          ) {
-            (
-              await waitForElementByXpath('.//td//p[text()="Limit"]', row)
-            ).click();
-
-            const inputPrice = (await waitForElementByXpath(
-              '(//*[starts-with(@id,"dialog")]//input)[1]',
-            )) as HTMLInputElement;
-            inputSetter.call(inputPrice, entryPrice);
-            inputPrice.dispatchEvent(new Event("input", { bubbles: true }));
-            const inputSize = (await waitForElementByXpath(
-              '(//*[starts-with(@id,"dialog")]//input)[2]',
-            )) as HTMLInputElement;
-            inputSetter.call(inputSize, sizeToReduce);
-            inputSize.dispatchEvent(new Event("input", { bubbles: true }));
-
-            (await waitForElementByXpath('//button[text()="Close"]')).click();
-
-            return; // since we click "Limit", the doc has mutated, following loop can not be executed.
-          }
-        }
+        await reducePosition();
       } else if (e.key === "k") {
         // "k" to clear open orders
-        const idx = await getIdx();
-        if (idx !== 3) {
-          console.log("check idx!");
-          return;
-        }
-        const rows = await waitForElementsByXpath(
-          `//main/div/div[3]//div[@data-scope="tabs" and @data-part="content"][${idx}]//tbody/tr`,
-        );
-        let row;
-        const cancels = [];
-        while ((row = rows.iterateNext())) {
-          cancels.push(
-            await waitForElementByXpath('.//button[text()="Cancel"]', row),
-          );
-        }
-        for (let cancel of cancels) {
-          cancel.click();
-        }
+        await clearOpenOrders();
       } else if (e.key === "p") {
         window.location.reload();
       } else if (e.key === " ") {
         // space to sell all market
         e.preventDefault(); // prevent scrolling
-        const rows = await waitForElementsByXpath('//p[text()="Market"]');
-        let row;
-        const markets = [];
-        while ((row = rows.iterateNext())) {
-          markets.push(row);
-        }
-        for (let market of markets) {
-          (market as HTMLElement).click();
-        }
+        await sellAllMarket();
       }
     },
     true,
@@ -384,17 +444,67 @@ const watchPositions = async () => {
   const rows = await waitForElementsByXpath(
     `//main/div/div[3]//div[@data-scope="tabs" and @data-part="content"][${idx}]//tbody/tr`,
   );
-  let row;
-  while ((row = rows.iterateNext())) {
-    const percentage = parseFloat(
-      (
-        await waitForElementByXpath('.//td//p[starts-with(text(),"(")]', row)
-      ).textContent!.replace("(", ""),
-    );
-    if (percentage <= -50) {
-      // -50% position alert
-      audioPlay();
+  let row,
+    rowCount = 0,
+    percentages = [];
+  try {
+    while ((row = rows.iterateNext())) {
+      rowCount++;
+      const { size, betSize, leverage, direction, percentage } =
+        await parseRow(row);
+      percentages.push(percentage);
+      if (percentage <= -PERCENTAGE) {
+        audioPlay();
+        if (
+          size + betSize * leverage <=
+          betSize * leverage * (1 + MAX_SAVE_TRY)
+        ) {
+          switch (direction) {
+            case "long":
+              await openLong();
+              await sleep(2);
+              break;
+            case "short":
+              await openShort();
+              await sleep(2);
+          }
+          // clean previously orders (if any)
+          await switchRight();
+          await sleep(2);
+          await clearOpenOrders();
+          // open new reduce position order
+          await switchLeft();
+          await sleep(2);
+          await reducePosition();
+        }
+      }
     }
+    if (rowCount === 1) {
+      for (let i = 0; i < 10; i++) {
+        console.log("just one direction!");
+        audioPlay();
+        await sleep(2);
+      }
+    } else if (rowCount === 2) {
+      if (
+        percentages.reduce((acc, cur) => acc + cur, 0) > PERCENTAGE_CLOSE_ALL &&
+        percentages.every((p) => p > 0)
+      ) {
+        await sellAllMarket();
+        const sec = randomInt(60, 600);
+        console.log(`sleeping ${sec}s!`);
+        await sleep(sec);
+        await openLong();
+        await sleep(0.05);
+        await openShort();
+        await sleep(5);
+        window.location.reload();
+      }
+    }
+  } catch (e) {
+    console.log(
+      "Document mutated during iteration, continuing to next check...",
+    );
   }
   await watchPositions();
 };
