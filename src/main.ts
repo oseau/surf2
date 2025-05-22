@@ -115,18 +115,24 @@ const parseRow = async (row: Node) => {
       "",
     ),
   );
+  const currentPrice = parseFloat(
+    (await waitForElementByXpath(".//td[6]//p", row)).textContent!.replaceAll(
+      ",",
+      "",
+    ),
+  );
   const liqPrice = parseFloat(
     (await waitForElementByXpath(".//td[7]//p", row)).textContent!.replaceAll(
       ",",
       "",
     ),
   );
-  const percentage = parseFloat(
-    (
-      await waitForElementByXpath('.//td//p[starts-with(text(),"(")]', row)
-    ).textContent!.replace("(", ""),
-  );
   const direction = liqPrice <= entryPrice ? "long" : "short";
+  const percentage =
+    ((direction === "long" ? 100 : -100) *
+      leverage *
+      (currentPrice - entryPrice)) /
+    entryPrice;
   return {
     betSize,
     leverage,
