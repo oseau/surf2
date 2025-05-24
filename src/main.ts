@@ -43,7 +43,7 @@ const audioPlay = async () => {
   floatingDiv.style.padding = "20px";
   floatingDiv.style.borderRadius = "5px";
   floatingDiv.style.zIndex = "1000";
-  floatingDiv.style.display = "none"; // Initially hidden
+  floatingDiv.style.display = "block"; // Initially shown
 
   // Add content to the div
   floatingDiv.innerText = "";
