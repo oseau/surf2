@@ -42,9 +42,11 @@ const logger = (() => {
 
   // Apply styles to the floating div
   div.style.position = "fixed";
-  div.style.top = "50%";
-  div.style.left = "50%";
-  div.style.transform = "translate(-50%, -50%)"; // Centering
+  // div.style.top = "50%";
+  // div.style.left = "50%";
+  // div.style.transform = "translate(-50%, -50%)"; // Centering
+  div.style.bottom = "0px";
+  div.style.right = "0px";
   div.style.backgroundColor = "rgba(0, 0, 0, 0.8)";
   div.style.color = "white";
   div.style.padding = "20px";
