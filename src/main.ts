@@ -2,7 +2,8 @@
 import { sound } from "./notification";
 
 const PERCENTAGE = 50; // -50% PNL take action & alert
-const PERCENTAGE_CLOSE_ALL = 80; // total percentages to sell all position and restart
+const PERCENTAGE_CLOSE_ALL = 100; // total percentages to sell all position and restart
+const PERCENTAGE_MIN = 20; // we won't take profit if less than this
 const MAX_SAVE_TRY = 5; // we only adding 5 consecutive times at most for any direction
 
 const sleep = (seconds = 1) =>
@@ -26,6 +27,47 @@ const audioPlay = async () => {
     },
     console.error,
   );
+};
+
+(() => {
+  // Create the floating div element
+  const floatingDiv = document.createElement("div");
+  floatingDiv.className = "my-floating-log"; // Add a class for easy selection
+
+  floatingDiv.style.position = "fixed";
+  floatingDiv.style.top = "50%";
+  floatingDiv.style.left = "50%";
+  floatingDiv.style.transform = "translate(-50%, -50%)"; // Centering
+  floatingDiv.style.backgroundColor = "rgba(0, 0, 0, 0.8)";
+  floatingDiv.style.color = "white";
+  floatingDiv.style.padding = "20px";
+  floatingDiv.style.borderRadius = "5px";
+  floatingDiv.style.zIndex = "1000";
+  floatingDiv.style.display = "none"; // Initially hidden
+
+  // Add content to the div
+  floatingDiv.innerText = "";
+
+  // Append the div directly to the end of the body
+  document.body.parentNode!.insertBefore(
+    floatingDiv,
+    document.body.nextSibling,
+  );
+})();
+
+const toggleLog = () => {
+  const floatingDiv = document.querySelector(
+    ".my-floating-log",
+  )! as HTMLDivElement;
+  floatingDiv.style.display =
+    floatingDiv.style.display === "none" ? "block" : "none";
+};
+
+const updateLog = (text: string) => {
+  const floatingDiv = document.querySelector(
+    ".my-floating-log",
+  )! as HTMLDivElement;
+  floatingDiv.innerText = text;
 };
 
 const openLong = async () => {
@@ -331,13 +373,13 @@ const bindKeys = async () => {
       if (document.activeElement instanceof HTMLInputElement) {
         return;
       }
-      if (e.key === "ArrowLeft" || e.key === "a") {
+      if (e.key === "a") {
         e.preventDefault();
         (await waitForElementByXpath('//button[text()="Long"]')).click();
         if (document.activeElement instanceof HTMLElement) {
           document.activeElement.blur();
         }
-      } else if (e.key === "ArrowRight" || e.key === "o") {
+      } else if (e.key === "o") {
         e.preventDefault();
         (await waitForElementByXpath('//button[text()="Short"]')).click();
         if (document.activeElement instanceof HTMLElement) {
@@ -384,6 +426,9 @@ const bindKeys = async () => {
       } else if (e.key === "k") {
         // "k" to clear open orders
         await clearOpenOrders();
+      } else if (e.key === "q") {
+        // show log
+        toggleLog();
       } else if (e.key === "p") {
         window.location.reload();
       } else if (e.key === " ") {
@@ -492,9 +537,14 @@ const watchPositions = async () => {
         await sleep(2);
       }
     } else if (rowCount === 2) {
+      const total = percentages.reduce((acc, cur) => acc + cur, 0);
+      updateLog(
+        percentages.reduce((acc, cur) => `${acc}p: ${cur.toFixed(2)}\n`, "") +
+          `\ntotal: ${total.toFixed(2)}`,
+      );
       if (
-        percentages.reduce((acc, cur) => acc + cur, 0) > PERCENTAGE_CLOSE_ALL &&
-        percentages.every((p) => p > 0)
+        total >= PERCENTAGE_CLOSE_ALL &&
+        percentages.every((p) => p >= PERCENTAGE_MIN)
       ) {
         await sellAllMarket();
         const sec = randomInt(60, 600);

@@ -3,12 +3,13 @@
 short-cuts for https://v2.surf.one/
 
 - `` ` `` to reset leverage and collateral to 1 to be safe
-- `left-arrow` or `a` to `open long`
-- `right-arrow` or `o` to `open short`
+- `a` to `open long`
+- `o` to `open short`
 - `e` `u` to switch tab
 - `j` to reduce position
 - `k` to clear open orders
 - `p` to refresh
+- `q` to toggle log
 - `space` to close all positions using market price
 
 alert when any position lost >= -XX%
