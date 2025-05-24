@@ -29,45 +29,48 @@ const audioPlay = async () => {
   );
 };
 
-(() => {
-  // Create the floating div element
-  const floatingDiv = document.createElement("div");
-  floatingDiv.className = "my-floating-log"; // Add a class for easy selection
+const logger = (() => {
+  // Create the host element for the shadow DOM
+  // steal from https://github.com/philc/vimium/blob/fbd791ac13baac6cf2ddc563ce529e7a7b856dad/content_scripts/vimium_frontend.js#L358C13-L371
+  const shadowWrapper = document.createElement("div");
+  shadowWrapper.className = "vimium-reset";
+  const shadowRoot = shadowWrapper.attachShadow({ mode: "open" });
 
-  floatingDiv.style.position = "fixed";
-  floatingDiv.style.top = "50%";
-  floatingDiv.style.left = "50%";
-  floatingDiv.style.transform = "translate(-50%, -50%)"; // Centering
-  floatingDiv.style.backgroundColor = "rgba(0, 0, 0, 0.8)";
-  floatingDiv.style.color = "white";
-  floatingDiv.style.padding = "20px";
-  floatingDiv.style.borderRadius = "5px";
-  floatingDiv.style.zIndex = "1000";
-  floatingDiv.style.display = "block"; // Initially shown
+  // Create the floating div element
+  const div = document.createElement("div");
+  div.className = "my-floating-log"; // Add a class for easy selection
+
+  // Apply styles to the floating div
+  div.style.position = "fixed";
+  div.style.top = "50%";
+  div.style.left = "50%";
+  div.style.transform = "translate(-50%, -50%)"; // Centering
+  div.style.backgroundColor = "rgba(0, 0, 0, 0.8)";
+  div.style.color = "white";
+  div.style.padding = "20px";
+  div.style.borderRadius = "5px";
+  div.style.zIndex = "1000";
+  div.style.display = "block"; // default as shown
 
   // Add content to the div
-  floatingDiv.innerText = "";
+  div.innerText = "";
 
-  // Append the div directly to the end of the body
-  document.body.parentNode!.insertBefore(
-    floatingDiv,
-    document.body.nextSibling,
-  );
+  // Append the floating div to the shadow root
+  shadowRoot.appendChild(div);
+
+  document.documentElement.appendChild(shadowWrapper);
+  return div;
 })();
 
 const toggleLog = () => {
-  const floatingDiv = document.querySelector(
-    ".my-floating-log",
-  )! as HTMLDivElement;
-  floatingDiv.style.display =
-    floatingDiv.style.display === "none" ? "block" : "none";
+  // or we can do
+  // const logger = document
+  //   .querySelector(".vimium-reset")!.shadowRoot!.querySelector(".my-floating-log")! as HTMLDivElement;
+  logger.style.display = logger.style.display === "none" ? "block" : "none";
 };
 
 const updateLog = (text: string) => {
-  const floatingDiv = document.querySelector(
-    ".my-floating-log",
-  )! as HTMLDivElement;
-  floatingDiv.innerText = text;
+  logger.innerText = text;
 };
 
 const openLong = async () => {
