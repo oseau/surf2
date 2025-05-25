@@ -1,10 +1,10 @@
 // @ts-ignore isolatedModules
 import { sound } from "./notification";
 
-const PERCENTAGE = -50; // -50% PNL take action & alert
+const PERCENTAGE = -55; // -55% PNL take action & alert
 const PERCENTAGE_CLOSE_ALL = 100; // total percentages to sell all position and restart
 const PERCENTAGE_MIN = 20; // we won't take profit if less than this
-const MAX_SAVE_TRY = 5; // we only adding 5 consecutive times at most for any direction
+const MAX_SAVE_TRY = 7; // we only adding 7 consecutive times at most for any direction
 
 const sleep = (seconds = 1) =>
   new Promise((resolve) => setTimeout(resolve, 1000 * seconds));
