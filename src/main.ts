@@ -1,7 +1,7 @@
 // @ts-ignore isolatedModules
 import { sound } from "./notification";
 
-const PERCENTAGE = 50; // -50% PNL take action & alert
+const PERCENTAGE = -50; // -50% PNL take action & alert
 const PERCENTAGE_CLOSE_ALL = 100; // total percentages to sell all position and restart
 const PERCENTAGE_MIN = 20; // we won't take profit if less than this
 const MAX_SAVE_TRY = 5; // we only adding 5 consecutive times at most for any direction
@@ -143,13 +143,16 @@ const parseRow = async (row: Node) => {
       )) as HTMLInputElement
     ).value,
   );
-  const leverage = parseInt(
-    (
-      await waitForElementByXpath(
-        './/td//p[substring(text(), string-length(text()) - string-length("x") + 1) = "x"]',
-        row,
-      )
-    ).textContent!.replaceAll(",", ""),
+  const leverage = Math.ceil(
+    // 164.8 => 165
+    parseFloat(
+      (
+        await waitForElementByXpath(
+          './/td//p[substring(text(), string-length(text()) - string-length("x") + 1) = "x"]',
+          row,
+        )
+      ).textContent!.replaceAll(",", ""),
+    ),
   );
   const size = parseInt(
     (await waitForElementByXpath('.//td[starts-with(text(), "$ ")]', row))
@@ -475,101 +478,110 @@ const scrollDown = async () => {
   }
 };
 
-let countNonWatchSeconds = 0;
+const locker = (() => {
+  let locked = false;
+  return {
+    lock: () => {
+      if (locked) {
+        return false;
+      }
+      locked = true;
+      return true;
+    },
+    unlock: () => {
+      locked = false;
+    },
+  };
+})();
 
 const watchPositions = async () => {
-  await sleep();
-  const idx = await getIdx();
-  if (countNonWatchSeconds % 60 === 30) {
-    console.log("test", { idx, countNonWatchSeconds });
-  }
-  if (idx !== 2) {
-    console.log("check idx!");
-    countNonWatchSeconds++;
-    if (countNonWatchSeconds >= 60) {
-      // 1min non watch alert
-      countNonWatchSeconds = 0;
-      for (let i = 0; i < 10; i++) {
-        audioPlay();
-        await sleep();
-      }
+  const rows = (await waitForElementByXpath(
+    `//main/div/div[3]//div[@data-scope="tabs" and @data-part="content"][2]//tbody`,
+  )) as any;
+  new MutationObserver(async () => {
+    if (!locker.lock()) {
+      return;
     }
-    return await watchPositions();
-  }
-  countNonWatchSeconds = 0;
-  const rows = await waitForElementsByXpath(
-    `//main/div/div[3]//div[@data-scope="tabs" and @data-part="content"][${idx}]//tbody/tr`,
-  );
-  let row,
-    rowCount = 0,
-    percentages = [];
-  try {
-    while ((row = rows.iterateNext())) {
-      rowCount++;
-      const { size, betSize, leverage, direction, percentage } =
-        await parseRow(row);
-      percentages.push(percentage);
-      if (percentage <= -PERCENTAGE) {
-        audioPlay();
-        if (
-          size + betSize * leverage <=
-          betSize * leverage * (1 + MAX_SAVE_TRY)
-        ) {
-          switch (direction) {
-            case "long":
-              await openLong();
-              await sleep(2);
-              break;
-            case "short":
-              await openShort();
-              await sleep(2);
+    const rows = await waitForElementsByXpath(
+      `//main/div/div[3]//div[@data-scope="tabs" and @data-part="content"][2]//tbody/tr`,
+    );
+    let row,
+      rowCount = 0,
+      percentages = [];
+    try {
+      while ((row = rows.iterateNext())) {
+        rowCount++;
+        const { size, betSize, leverage, direction, percentage } =
+          await parseRow(row);
+        percentages.push(percentage);
+        if (percentage <= PERCENTAGE) {
+          audioPlay();
+          if (
+            size + betSize * leverage <=
+            betSize * leverage * (1 + MAX_SAVE_TRY)
+          ) {
+            switch (direction) {
+              case "long":
+                await openLong();
+                await sleep(2);
+                break;
+              case "short":
+                await openShort();
+                await sleep(2);
+                break;
+            }
+            // clean previously orders (if any)
+            await switchRight();
+            await sleep(2);
+            await clearOpenOrders();
+            // open new reduce position order
+            await switchLeft();
+            await sleep(2);
+            await reducePosition();
           }
-          // clean previously orders (if any)
-          await switchRight();
-          await sleep(2);
-          await clearOpenOrders();
-          // open new reduce position order
-          await switchLeft();
-          await sleep(2);
-          await reducePosition();
         }
       }
-    }
-    if (rowCount === 1) {
-      for (let i = 0; i < 10; i++) {
-        console.log("just one direction!");
-        audioPlay();
-        await sleep(2);
+      if (rowCount === 1) {
+        for (let i = 0; i < 10; i++) {
+          console.log("just one direction!");
+          audioPlay();
+          await sleep(2);
+        }
+      } else if (rowCount === 2) {
+        const total = percentages.reduce((acc, cur) => acc + cur, 0);
+        updateLog(
+          percentages.reduce((acc, cur) => `${acc}p: ${cur.toFixed(2)}\n`, "") +
+            `\ntotal: ${total.toFixed(2)}`,
+        );
+        if (
+          total >= PERCENTAGE_CLOSE_ALL &&
+          percentages.every((p) => p >= PERCENTAGE_MIN)
+        ) {
+          await sellAllMarket();
+          const sec = randomInt(60, 600);
+          console.log(`sleeping ${sec}s!`);
+          await sleep(sec);
+          await openLong();
+          await sleep(0.05);
+          await openShort();
+          await sleep(5);
+          window.location.reload();
+        }
       }
-    } else if (rowCount === 2) {
-      const total = percentages.reduce((acc, cur) => acc + cur, 0);
-      updateLog(
-        percentages.reduce((acc, cur) => `${acc}p: ${cur.toFixed(2)}\n`, "") +
-          `\ntotal: ${total.toFixed(2)}`,
+      locker.unlock();
+    } catch (e) {
+      console.log(
+        "Document mutated during iteration, continuing to next check...",
       );
-      if (
-        total >= PERCENTAGE_CLOSE_ALL &&
-        percentages.every((p) => p >= PERCENTAGE_MIN)
-      ) {
-        await sellAllMarket();
-        const sec = randomInt(60, 600);
-        console.log(`sleeping ${sec}s!`);
-        await sleep(sec);
-        await openLong();
-        await sleep(0.05);
-        await openShort();
-        await sleep(5);
-        window.location.reload();
-      }
+      locker.unlock();
     }
-  } catch (e) {
-    console.log(
-      "Document mutated during iteration, continuing to next check...",
-    );
-  }
-  await watchPositions();
+  }).observe(rows, {
+    childList: true,
+    subtree: true,
+    characterData: true,
+  });
 };
 
-bindKeys();
-scrollDown();
-watchPositions();
+await bindKeys();
+await scrollDown();
+await watchPositions();
