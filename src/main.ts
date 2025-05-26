@@ -59,9 +59,9 @@ const logger = (() => {
   // div.style.transform = "translate(-50%, -50%)"; // Centering
   div.style.bottom = "0px";
   div.style.right = "0px";
-  div.style.backgroundColor = "rgba(0, 0, 0, 0.8)";
+  div.style.backgroundColor = "rgba(0, 0, 0, 0.9)";
   div.style.color = "white";
-  div.style.padding = "20px";
+  div.style.padding = "8px 20px";
   div.style.borderRadius = "5px";
   div.style.zIndex = "1000";
   div.style.display = "block"; // default as shown
@@ -93,6 +93,7 @@ const openLong = async () => {
     document.activeElement.blur();
   }
 };
+
 const openShort = async () => {
   (await waitForElementByXpath('//button[text()="Short"]')).click();
   if (document.activeElement instanceof HTMLElement) {
@@ -292,6 +293,7 @@ const switchLeft = async () => {
     ).click();
   }
 };
+
 const switchRight = async () => {
   const currentTabText = (
     await waitForElementByXpath(
@@ -486,7 +488,7 @@ const scrollDown = async () => {
       block: "end",
       inline: "nearest",
     });
-    window.scrollBy(0, 8);
+    window.scrollBy(0, 6);
   }
 };
 
