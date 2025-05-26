@@ -14,7 +14,19 @@ const randomInt = (
   max: number, // [min, max] both inclusive
 ) => Math.floor(Math.random() * (max - min + 1) + min);
 
-const audioPlay = async () => {
+const throttle = (func: CallableFunction, seconds = 1) => {
+  let inThrottle = false;
+  return async (...args: any[]) => {
+    if (!inThrottle) {
+      inThrottle = true;
+      func(...args);
+      await sleep(seconds);
+      inThrottle = false;
+    }
+  };
+};
+
+const alert = throttle(async () => {
   const ctxAudio = new AudioContext();
   const srcAudio = ctxAudio.createBufferSource();
   const resp = await fetch(sound);
@@ -27,7 +39,7 @@ const audioPlay = async () => {
     },
     console.error,
   );
-};
+});
 
 const logger = (() => {
   // Create the host element for the shadow DOM
@@ -515,7 +527,7 @@ const watchPositions = async () => {
           await parseRow(row);
         percentages.push(percentage);
         if (percentage <= PERCENTAGE) {
-          audioPlay();
+          alert();
           if (
             size + betSize * leverage <=
             betSize * leverage * (1 + MAX_SAVE_TRY)
@@ -544,7 +556,7 @@ const watchPositions = async () => {
       if (rowCount === 1) {
         for (let i = 0; i < 10; i++) {
           console.log("just one direction!");
-          audioPlay();
+          alert();
           await sleep(2);
         }
       } else if (rowCount === 2) {
