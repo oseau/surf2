@@ -65,6 +65,9 @@ const logger = (() => {
   div.style.padding = "4px 20px";
   div.style.borderRadius = "5px";
   div.style.zIndex = "1000";
+  div.style.textAlign = "right";
+  div.style.whiteSpace = "pre";
+  div.style.fontFamily = "monospace";
   div.style.display = "block"; // default as shown
 
   // Add content to the div
@@ -569,8 +572,8 @@ const watchPositions = async () => {
       } else if (rowCount === 2) {
         const total = percentages.reduce((acc, cur) => acc + cur, 0);
         updateLog(
-          percentages.reduce((acc, cur) => `${acc}p: ${cur.toFixed(2)}\n`, "") +
-            `total: ${total.toFixed(2)}`,
+          percentages.reduce((acc, cur) => `${acc}${cur.toFixed(2)}\n`, "") +
+            `total:     ${total.toFixed(2)}`,
         );
         if (
           total >= PERCENTAGE_CLOSE_ALL &&
