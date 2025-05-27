@@ -160,7 +160,14 @@ const parseRow = async (row: Node) => {
       )) as HTMLInputElement
     ).value,
   );
-  const leverage = Math.ceil(
+  const leverageSet = parseInt(
+    (
+      await waitForElementByXpath(
+        '//main/div/div[2]//button[substring(text(), string-length(text()) - string-length("x") + 1) = "x"]',
+      )
+    ).textContent!,
+  );
+  const leverageRow = Math.ceil(
     // 164.8 => 165
     parseFloat(
       (
@@ -171,6 +178,10 @@ const parseRow = async (row: Node) => {
       ).textContent!.replaceAll(",", ""),
     ),
   );
+  const leverage =
+    leverageRow <= leverageSet && leverageRow / leverageSet >= 0.9
+      ? leverageSet
+      : leverageRow;
   const size = parseInt(
     (await waitForElementByXpath('.//td[starts-with(text(), "$ ")]', row))
       .textContent!.replaceAll(",", "")
