@@ -62,7 +62,7 @@ const logger = (() => {
   div.style.right = "0px";
   div.style.backgroundColor = "rgba(0, 0, 0, 0.9)";
   div.style.color = "white";
-  div.style.padding = "8px 20px";
+  div.style.padding = "4px 20px";
   div.style.borderRadius = "5px";
   div.style.zIndex = "1000";
   div.style.display = "block"; // default as shown
@@ -570,7 +570,7 @@ const watchPositions = async () => {
         const total = percentages.reduce((acc, cur) => acc + cur, 0);
         updateLog(
           percentages.reduce((acc, cur) => `${acc}p: ${cur.toFixed(2)}\n`, "") +
-            `\ntotal: ${total.toFixed(2)}`,
+            `total: ${total.toFixed(2)}`,
         );
         if (
           total >= PERCENTAGE_CLOSE_ALL &&
