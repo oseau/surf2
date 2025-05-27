@@ -1,9 +1,10 @@
 // @ts-ignore isolatedModules
 import { sound } from "./notification";
+import { finder } from "@medv/finder";
 
 const PERCENTAGE = -55; // -55% PNL take action & alert
-const PERCENTAGE_CLOSE_ALL = 100; // total percentages to sell all position and restart
-const PERCENTAGE_MIN = 20; // we won't take profit if less than this
+const PERCENTAGE_CLOSE_ALL = 1000; // total percentages to sell all position and restart
+const PERCENTAGE_MIN = 100; // we won't take profit if less than this
 const MAX_SAVE_TRY = 7; // we only adding 7 consecutive times at most for any direction
 
 const sleep = (seconds = 1) =>
@@ -484,11 +485,15 @@ const scrollDown = async () => {
     }
   }
   if (lastRow) {
+    (await waitForElementByXpath("//main/following-sibling::div[1]")).hidden =
+      true;
     (lastRow as HTMLElement).scrollIntoView({
       block: "end",
       inline: "nearest",
     });
-    window.scrollBy(0, 6);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+    await sleep();
+    window.scrollTo({ top: 90, behavior: "smooth" });
   }
 };
 
@@ -595,6 +600,13 @@ const watchPositions = async () => {
     characterData: true,
   });
 };
+
+if (import.meta.env.DEV) {
+  document.addEventListener("click", (event) => {
+    const selector = finder(event.target as any);
+    console.log("==============", { selector });
+  });
+}
 
 await bindKeys();
 await scrollDown();

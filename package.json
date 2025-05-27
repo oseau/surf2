@@ -9,6 +9,7 @@
     "preview": "vite preview"
   },
   "devDependencies": {
+    "@medv/finder": "^4.0.2",
     "typescript": "^5.7.2",
     "vite": "^6.0.5",
     "vite-plugin-monkey": "^5.0.3"
