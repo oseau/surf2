@@ -575,11 +575,22 @@ const watchPositions = async () => {
                 await openShort();
                 break;
             }
+            // wait for open order to be filled
+            await waitForElementByXpath(
+              `.//td[starts-with(text(), "$ ${new Intl.NumberFormat("en-US", {
+                style: "currency",
+                currency: "USD",
+              })
+                .format(size + betSize * leverage)
+                .substring(1)}")]`,
+              row,
+            );
             // clean previously orders (if any)
-            await sleep(2);
             await clearOpenOrders();
+            await waitForElementByXpath(
+              '//main/div/div[3]//div[@data-scope="tabs" and @data-part="list"]//button[text()="Open Orders (0)"]',
+            );
             // open new reduce position order
-            await sleep(2);
             await reducePosition();
           }
         }
