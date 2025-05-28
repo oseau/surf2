@@ -606,7 +606,7 @@ const watchPositions = async () => {
         updateLog(
           percentages.reduce(
             (acc, cur) => `${acc}${cur.toFixed(2)}\n`,
-            `watch:     ${watch.cnt}, ${watch.p.toFixed(0)}\n`,
+            `watch:     ${watch.cnt}, ${watch.p ? watch.p.toFixed(0) : "overflow"}\n`,
           ) + `total:     ${total.toFixed(2)}`,
         );
         if (
@@ -627,6 +627,7 @@ const watchPositions = async () => {
     } catch (e) {
       console.log(
         "Document mutated during iteration, continuing to next check...",
+        e,
       );
     }
     locker.unlock();
