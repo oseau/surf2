@@ -241,13 +241,8 @@ const parseRow = async (row: Node) => {
 };
 
 const reducePosition = async () => {
-  const idx = await getIdx();
-  if (idx !== 2) {
-    console.log("check idx!");
-    return;
-  }
   const rows = await waitForElementsByXpath(
-    `//main/div/div[3]//div[@data-scope="tabs" and @data-part="content"][${idx}]//tbody/tr`,
+    `//main/div/div[3]//div[@data-scope="tabs" and @data-part="content"][2]//tbody/tr`,
   );
   let row;
   while ((row = rows.iterateNext())) {
@@ -280,13 +275,8 @@ const reducePosition = async () => {
 };
 
 const clearOpenOrders = async () => {
-  const idx = await getIdx();
-  if (idx !== 3) {
-    console.log("check idx!");
-    return;
-  }
   const rows = await waitForElementsByXpath(
-    `//main/div/div[3]//div[@data-scope="tabs" and @data-part="content"][${idx}]//tbody/tr`,
+    `//main/div/div[3]//div[@data-scope="tabs" and @data-part="content"][3]//tbody/tr`,
   );
   let row;
   const cancels = [];
@@ -580,20 +570,15 @@ const watchPositions = async () => {
             switch (direction) {
               case "long":
                 await openLong();
-                await sleep(2);
                 break;
               case "short":
                 await openShort();
-                await sleep(2);
                 break;
             }
             // clean previously orders (if any)
-            await switchRight();
             await sleep(2);
             await clearOpenOrders();
             // open new reduce position order
-            await switchLeft();
-            await sleep(2);
             await reducePosition();
           }
         }
