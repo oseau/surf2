@@ -2,7 +2,7 @@
 import { sound } from "./notification";
 import { finder } from "@medv/finder";
 
-const PERCENTAGE_SAVE = [-5, -10, -15, -25, -40, -65, -75, -85]; // -x% PNL to take action & alert on each save
+const PERCENTAGE_SAVE = [-4, -9, -16, -25, -36, -49, -64, -81]; // -x% PNL to take action & alert on each save
 const PERCENTAGE_CLOSE_ALL = 1000; // total percentages to sell all position and restart
 const PERCENTAGE_MIN = 100; // we won't take profit if less than this
 const MAX_SAVE_TRY = 7; // we only adding 7 consecutive times at most for any direction
