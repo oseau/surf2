@@ -579,6 +579,7 @@ const watchPositions = async () => {
             await sleep(2);
             await clearOpenOrders();
             // open new reduce position order
+            await sleep(2);
             await reducePosition();
           }
         }
