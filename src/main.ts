@@ -2,7 +2,7 @@
 import { sound } from "./notification";
 import { finder } from "@medv/finder";
 
-const PERCENTAGE = -55; // -55% PNL take action & alert
+const PERCENTAGE_SAVE = [-5, -10, -15, -25, -40, -65, -75, -85]; // -x% PNL to take action & alert on each save
 const PERCENTAGE_CLOSE_ALL = 1000; // total percentages to sell all position and restart
 const PERCENTAGE_MIN = 100; // we won't take profit if less than this
 const MAX_SAVE_TRY = 7; // we only adding 7 consecutive times at most for any direction
@@ -89,7 +89,21 @@ const toggleLog = () => {
 
 const updateLog = (text: string) => {
   logger.innerText = text;
+  refresher.update();
 };
+
+const refresher = (() => {
+  // refresh if we did not receive data within last 10 seconds
+  let latest = Date.now();
+  return {
+    update: () => (latest = Date.now()),
+    refresh: () => {
+      if ((Date.now() - latest) / 1000 >= 10) {
+        window.location.reload();
+      }
+    },
+  };
+})();
 
 const openLong = async () => {
   (await waitForElementByXpath('//button[text()="Long"]')).click();
@@ -199,6 +213,9 @@ const parseRow = async (row: Node) => {
       "",
     ),
   );
+  const saveCount = Math.ceil(
+    (size - betSize * leverage) / (betSize * leverage),
+  );
   const liqPrice = parseFloat(
     (await waitForElementByXpath(".//td[7]//p", row)).textContent!.replaceAll(
       ",",
@@ -219,6 +236,7 @@ const parseRow = async (row: Node) => {
     liqPrice,
     percentage,
     direction: direction as "long" | "short",
+    saveCount,
   };
 };
 
@@ -540,14 +558,20 @@ const watchPositions = async () => {
     );
     let row,
       rowCount = 0,
-      percentages = [];
+      percentages = [],
+      watch = { cnt: -1, p: 0 };
     try {
       while ((row = rows.iterateNext())) {
         rowCount++;
-        const { size, betSize, leverage, direction, percentage } =
+        const { size, betSize, leverage, direction, percentage, saveCount } =
           await parseRow(row);
         percentages.push(percentage);
-        if (percentage <= PERCENTAGE) {
+        if (saveCount >= watch.cnt) {
+          watch = { cnt: saveCount, p: PERCENTAGE_SAVE[saveCount] };
+        }
+        if (saveCount >= PERCENTAGE_SAVE.length) {
+          alert();
+        } else if (percentage <= PERCENTAGE_SAVE[saveCount]) {
           alert();
           if (
             size + betSize * leverage <=
@@ -583,8 +607,10 @@ const watchPositions = async () => {
       } else if (rowCount === 2) {
         const total = percentages.reduce((acc, cur) => acc + cur, 0);
         updateLog(
-          percentages.reduce((acc, cur) => `${acc}${cur.toFixed(2)}\n`, "") +
-            `total:     ${total.toFixed(2)}`,
+          percentages.reduce(
+            (acc, cur) => `${acc}${cur.toFixed(2)}\n`,
+            `watch:     ${watch.cnt}, ${watch.p.toFixed(0)}\n`,
+          ) + `total:     ${total.toFixed(2)}`,
         );
         if (
           total >= PERCENTAGE_CLOSE_ALL &&
@@ -601,13 +627,12 @@ const watchPositions = async () => {
           window.location.reload();
         }
       }
-      locker.unlock();
     } catch (e) {
       console.log(
         "Document mutated during iteration, continuing to next check...",
       );
-      locker.unlock();
     }
+    locker.unlock();
   }).observe(rows, {
     childList: true,
     subtree: true,
@@ -625,3 +650,6 @@ if (import.meta.env.DEV) {
 await bindKeys();
 await scrollDown();
 await watchPositions();
+setInterval(() => {
+  refresher.refresh();
+}, 1000);
