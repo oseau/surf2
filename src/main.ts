@@ -476,9 +476,8 @@ const bindKeys = async () => {
         toggleLog();
       } else if (e.key === "p") {
         window.location.reload();
-      } else if (e.key === " ") {
-        // space to sell all market
-        e.preventDefault(); // prevent scrolling
+      } else if (e.key === "'") {
+        // "'" to sell all market
         await sellAllMarket();
       }
     },
