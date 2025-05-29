@@ -3,7 +3,7 @@ import { sound } from "./notification";
 import { finder } from "@medv/finder";
 
 const PERCENTAGE_SAVE = [-4, -9, -16, -25, -36, -49, -64, -81]; // -x% PNL to take action & alert on each save
-const PERCENTAGE_CLOSE_ALL = 1000; // total percentages to sell all position and restart
+const PERCENTAGE_CLOSE_ALL = 300; // total percentages to sell all position and restart
 const PERCENTAGE_MIN = 100; // we won't take profit if less than this
 
 const sleep = (seconds = 1) =>
@@ -534,85 +534,45 @@ const locker = (() => {
 })();
 
 const watchPositions = async () => {
-  const rows = (await waitForElementByXpath(
-    `//main/div/div[3]//div[@data-scope="tabs" and @data-part="content"][2]//tbody`,
-  )) as any;
   new MutationObserver(async () => {
     if (!locker.lock()) {
       return;
     }
-    const rows = await waitForElementsByXpath(
-      `//main/div/div[3]//div[@data-scope="tabs" and @data-part="content"][2]//tbody/tr`,
-    );
-    let row,
-      rowCount = 0,
-      percentages = [],
-      watch = { cnt: -1, p: "0" };
     try {
+      const rows = await waitForElementsByXpath(
+        `//main/div/div[3]//div[@data-scope="tabs" and @data-part="content"][2]//tbody/tr`,
+      );
+      let row;
+      const positions = [];
       while ((row = rows.iterateNext())) {
-        rowCount++;
-        const { size, betSize, leverage, direction, percentage, saveCount } =
-          await parseRow(row);
-        percentages.push(percentage);
-        if (saveCount >= watch.cnt) {
-          watch = {
-            cnt: saveCount,
-            p:
-              saveCount < PERCENTAGE_SAVE.length
-                ? PERCENTAGE_SAVE[saveCount].toFixed(0)
-                : `${PERCENTAGE_SAVE[PERCENTAGE_SAVE.length - 1]} ↑↑↑`,
-          };
-        }
-        if (saveCount >= PERCENTAGE_SAVE.length) {
-          if (percentage <= PERCENTAGE_SAVE[PERCENTAGE_SAVE.length - 1]) {
-            alert();
-          }
-        } else if (percentage <= PERCENTAGE_SAVE[saveCount]) {
-          alert();
-          switch (direction) {
-            case "long":
-              await openLong();
-              break;
-            case "short":
-              await openShort();
-              break;
-          }
-          // wait for open order to be filled
-          await waitForElementByXpath(
-            `.//td[starts-with(text(), "$ ${new Intl.NumberFormat("en-US", {
-              style: "currency",
-              currency: "USD",
-            })
-              .format(size + betSize * leverage)
-              .substring(1)}")]`,
-            row,
-          );
-          // clean previously orders (if any)
-          await clearOpenOrders();
-          await waitForElementByXpath(
-            '//main/div/div[3]//div[@data-scope="tabs" and @data-part="list"]//button[text()="Open Orders (0)"]',
-          );
-          // open new reduce position order
-          await reducePosition();
-        }
+        positions.push(await parseRow(row));
       }
-      if (rowCount === 1) {
+      const saveCount = positions.reduce(
+        (acc, cur) => (cur.saveCount >= acc.saveCount ? cur : acc),
+        { saveCount: 0 },
+      ).saveCount;
+      const shouldAutoOpen = saveCount < PERCENTAGE_SAVE.length;
+      const threshould = shouldAutoOpen
+        ? PERCENTAGE_SAVE[saveCount]
+        : PERCENTAGE_SAVE[PERCENTAGE_SAVE.length - 1];
+
+      if (positions.length < 2) {
         for (let i = 0; i < 10; i++) {
           console.log("just one direction!");
           alert();
-          await sleep(2);
+          await sleep();
         }
-      } else if (rowCount === 2) {
-        const total = percentages.reduce((acc, cur) => acc + cur, 0);
+      } else if (positions.length === 2) {
+        const total = positions.reduce((acc, cur) => acc + cur.percentage, 0);
         updateLog(
-          percentages.reduce(
-            (acc, cur) => `${acc}${cur.toFixed(2)}\n`,
-            `watch:     ${watch.cnt}, ${watch.p}\n`,
+          positions.reduce(
+            (acc, cur) => `${acc}${cur.percentage.toFixed(2)}\n`,
+            `watch:       ${threshould}${shouldAutoOpen ? "" : " ↑↑↑"}\n`,
           ) + `total:     ${total.toFixed(2)}`,
         );
         if (
           total >= PERCENTAGE_CLOSE_ALL &&
-          percentages.every((p) => p >= PERCENTAGE_MIN)
+          positions.every((p) => p.percentage >= PERCENTAGE_MIN)
         ) {
           await sellAllMarket();
           const sec = randomInt(60, 600);
@@ -625,18 +585,57 @@ const watchPositions = async () => {
           window.location.reload();
         }
       }
+      for (let position of positions) {
+        if (position.percentage <= threshould) {
+          alert();
+          if (shouldAutoOpen) {
+            switch (position.direction) {
+              case "long":
+                await openLong();
+                break;
+              case "short":
+                await openShort();
+                break;
+            }
+            // wait for open order to be filled
+            await waitForElementByXpath(
+              `//main/div/div[3]//div[@data-scope="tabs" and @data-part="content"][2]//tbody/tr/td[starts-with(text(), "$ ${new Intl.NumberFormat(
+                "en-US",
+                {
+                  style: "currency",
+                  currency: "USD",
+                },
+              )
+                .format(position.size + position.betSize * position.leverage)
+                .substring(1)}")]`,
+            );
+            // clean previously orders (if any)
+            await clearOpenOrders();
+            await waitForElementByXpath(
+              '//main/div/div[3]//div[@data-scope="tabs" and @data-part="list"]//button[text()="Open Orders (0)"]',
+            );
+            // open new reduce position order
+            await reducePosition();
+          }
+        }
+      }
     } catch (e) {
-      console.log(
+      console.error(
         "Document mutated during iteration, continuing to next check...",
         e,
       );
     }
     locker.unlock();
-  }).observe(rows, {
-    childList: true,
-    subtree: true,
-    characterData: true,
-  });
+  }).observe(
+    await waitForElementByXpath(
+      `//main/div/div[3]//div[@data-scope="tabs" and @data-part="content"][2]//tbody`,
+    ),
+    {
+      childList: true,
+      subtree: true,
+      characterData: true,
+    },
+  );
 };
 
 if (import.meta.env.DEV) {
