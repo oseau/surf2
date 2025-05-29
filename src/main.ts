@@ -567,8 +567,9 @@ const watchPositions = async () => {
         updateLog(
           positions.reduce(
             (acc, cur) => `${acc}${cur.percentage.toFixed(2)}\n`,
-            `watch:       ${threshould}${shouldAutoOpen ? "" : " ↑↑↑"}\n`,
-          ) + `total:     ${total.toFixed(2)}`,
+            "",
+          ) +
+            `(${threshould}${shouldAutoOpen ? "" : " ↑↑↑"})      ${total.toFixed(2)}`,
         );
         if (
           total >= PERCENTAGE_CLOSE_ALL &&
