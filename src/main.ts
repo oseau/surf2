@@ -5,7 +5,6 @@ import { finder } from "@medv/finder";
 const PERCENTAGE_SAVE = [-4, -9, -16, -25, -36, -49, -64, -81]; // -x% PNL to take action & alert on each save
 const PERCENTAGE_CLOSE_ALL = 1000; // total percentages to sell all position and restart
 const PERCENTAGE_MIN = 100; // we won't take profit if less than this
-const MAX_SAVE_TRY = 7; // we only adding 7 consecutive times at most for any direction
 
 const sleep = (seconds = 1) =>
   new Promise((resolve) => setTimeout(resolve, 1000 * seconds));
@@ -548,7 +547,7 @@ const watchPositions = async () => {
     let row,
       rowCount = 0,
       percentages = [],
-      watch = { cnt: -1, p: 0 };
+      watch = { cnt: -1, p: "0" };
     try {
       while ((row = rows.iterateNext())) {
         rowCount++;
@@ -556,42 +555,45 @@ const watchPositions = async () => {
           await parseRow(row);
         percentages.push(percentage);
         if (saveCount >= watch.cnt) {
-          watch = { cnt: saveCount, p: PERCENTAGE_SAVE[saveCount] };
+          watch = {
+            cnt: saveCount,
+            p:
+              saveCount < PERCENTAGE_SAVE.length
+                ? PERCENTAGE_SAVE[saveCount].toFixed(0)
+                : `${PERCENTAGE_SAVE[PERCENTAGE_SAVE.length - 1]} ↑↑↑`,
+          };
         }
         if (saveCount >= PERCENTAGE_SAVE.length) {
-          alert();
+          if (percentage <= PERCENTAGE_SAVE[PERCENTAGE_SAVE.length - 1]) {
+            alert();
+          }
         } else if (percentage <= PERCENTAGE_SAVE[saveCount]) {
           alert();
-          if (
-            size + betSize * leverage <=
-            betSize * leverage * (1 + MAX_SAVE_TRY)
-          ) {
-            switch (direction) {
-              case "long":
-                await openLong();
-                break;
-              case "short":
-                await openShort();
-                break;
-            }
-            // wait for open order to be filled
-            await waitForElementByXpath(
-              `.//td[starts-with(text(), "$ ${new Intl.NumberFormat("en-US", {
-                style: "currency",
-                currency: "USD",
-              })
-                .format(size + betSize * leverage)
-                .substring(1)}")]`,
-              row,
-            );
-            // clean previously orders (if any)
-            await clearOpenOrders();
-            await waitForElementByXpath(
-              '//main/div/div[3]//div[@data-scope="tabs" and @data-part="list"]//button[text()="Open Orders (0)"]',
-            );
-            // open new reduce position order
-            await reducePosition();
+          switch (direction) {
+            case "long":
+              await openLong();
+              break;
+            case "short":
+              await openShort();
+              break;
           }
+          // wait for open order to be filled
+          await waitForElementByXpath(
+            `.//td[starts-with(text(), "$ ${new Intl.NumberFormat("en-US", {
+              style: "currency",
+              currency: "USD",
+            })
+              .format(size + betSize * leverage)
+              .substring(1)}")]`,
+            row,
+          );
+          // clean previously orders (if any)
+          await clearOpenOrders();
+          await waitForElementByXpath(
+            '//main/div/div[3]//div[@data-scope="tabs" and @data-part="list"]//button[text()="Open Orders (0)"]',
+          );
+          // open new reduce position order
+          await reducePosition();
         }
       }
       if (rowCount === 1) {
@@ -605,7 +607,7 @@ const watchPositions = async () => {
         updateLog(
           percentages.reduce(
             (acc, cur) => `${acc}${cur.toFixed(2)}\n`,
-            `watch:     ${watch.cnt}, ${watch.p ? watch.p.toFixed(0) : "overflow"}\n`,
+            `watch:     ${watch.cnt}, ${watch.p}\n`,
           ) + `total:     ${total.toFixed(2)}`,
         );
         if (
