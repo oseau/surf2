@@ -572,12 +572,14 @@ const watchPositions = async () => {
         );
         if (positions.every((p) => p.percentage >= PERCENTAGE_MIN)) {
           await sellAllMarket();
-          setInterval(() => {
-            // prevent refresh by our 10s non watch rule
-            refresher.update();
-          }, 1000);
           const sec = randomInt(60, 600);
           console.log(`sleeping ${sec}s!`);
+          let _sec = sec;
+          setInterval(() => {
+            // prevent refresh by our 10s non watch rule
+            updateLog(`waiting ${_sec}s...`);
+            _sec--;
+          }, 1000);
           await sleep(sec);
           await openLong();
           await sleep(0.05);
