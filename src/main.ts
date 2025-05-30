@@ -513,6 +513,12 @@ const scrollDown = async () => {
     window.scrollTo({ top: 0, behavior: "smooth" });
     await sleep();
     window.scrollTo({ top: 90, behavior: "smooth" });
+    // reset, previous session may be blocked and have uneven positions
+    await clearOpenOrders();
+    await waitForElementByXpath(
+      '//main/div/div[3]//div[@data-scope="tabs" and @data-part="list"]//button[text()="Open Orders (0)"]',
+    );
+    await reducePosition();
   }
 };
 
