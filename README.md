@@ -12,7 +12,9 @@ short-cuts for https://v2.surf.one/
 - `q` to toggle log
 - `'` to close all positions using market price
 
-alert and save when any position lost >= -XX%, check `PERCENTAGE_SAVE`
+alert and save when any position lost >= -XX%, check `PERCENTAGE_SAVE`.
+
+take profit when all position >= YY%, check `PERCENTAGE_MIN`
 
 ## dev
 
