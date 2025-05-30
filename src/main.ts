@@ -577,7 +577,9 @@ const watchPositions = async () => {
           let _sec = sec;
           setInterval(() => {
             // prevent refresh by our 10s non watch rule
-            updateLog(`waiting ${_sec}s...`);
+            if (_sec > 0) {
+              updateLog(`waiting ${_sec}s...`);
+            }
             _sec--;
           }, 1000);
           await sleep(sec);
