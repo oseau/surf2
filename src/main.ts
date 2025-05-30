@@ -3,7 +3,7 @@ import { sound } from "./notification";
 import { finder } from "@medv/finder";
 
 const PERCENTAGE_SAVE = [-4, -9, -16, -25, -36, -49, -64, -81]; // -x% PNL to take action & alert on each save
-const PERCENTAGE_MIN = 100; // we'll take profit if all positions >= this
+const PERCENTAGE_MIN = 30; // we'll take profit if all positions >= this
 
 const sleep = (seconds = 1) =>
   new Promise((resolve) => setTimeout(resolve, 1000 * seconds));
@@ -586,8 +586,9 @@ const watchPositions = async () => {
           await openLong();
           await sleep(0.05);
           await openShort();
-          await sleep(5);
+          await sleep(0.1);
           window.location.reload();
+          await sleep(5); // block here, wait until reload, prevent following save (if any during reload)
         }
       }
       for (let position of positions) {
