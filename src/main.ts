@@ -243,8 +243,12 @@ const reducePosition = async () => {
     `//main/div/div[3]//div[@data-scope="tabs" and @data-part="content"][2]//tbody/tr`,
   );
   let row;
+  const positions = [];
   while ((row = rows.iterateNext())) {
-    const { size, betSize, leverage, entryPrice } = await parseRow(row);
+    positions.push(row);
+  }
+  for (let position of positions) {
+    const { size, betSize, leverage, entryPrice } = await parseRow(position);
     const sizeToReduce = size - betSize * leverage;
     if (
       sizeToReduce > 0
@@ -252,7 +256,9 @@ const reducePosition = async () => {
       // 1. if percentage is negtive, we'll reduce when we get back even
       // 2. if percentage is positive, we take profit now
     ) {
-      (await waitForElementByXpath('.//td//p[text()="Limit"]', row)).click();
+      (
+        await waitForElementByXpath('.//td//p[text()="Limit"]', position)
+      ).click();
 
       const inputPrice = (await waitForElementByXpath(
         '(//*[starts-with(@id,"dialog")]//input)[1]',
@@ -513,13 +519,13 @@ const scrollDown = async () => {
     window.scrollTo({ top: 0, behavior: "smooth" });
     await sleep();
     window.scrollTo({ top: 90, behavior: "smooth" });
-    // reset, previous session may be blocked and have uneven positions
-    await clearOpenOrders();
-    await waitForElementByXpath(
-      '//main/div/div[3]//div[@data-scope="tabs" and @data-part="list"]//button[text()="Open Orders (0)"]',
-    );
-    await reducePosition();
   }
+  // reset, previous session may be blocked and have uneven positions
+  await clearOpenOrders();
+  await waitForElementByXpath(
+    '//main/div/div[3]//div[@data-scope="tabs" and @data-part="list"]//button[text()="Open Orders (0)"]',
+  );
+  await reducePosition();
 };
 
 const locker = (() => {
@@ -561,7 +567,9 @@ const watchPositions = async () => {
         ? PERCENTAGE_SAVE[saveCount]
         : PERCENTAGE_SAVE[PERCENTAGE_SAVE.length - 1];
 
-      if (positions.length < 2) {
+      if (positions.length === 0) {
+        updateLog("stay safe!");
+      } else if (positions.length === 1) {
         for (let i = 0; i < 10; i++) {
           console.log("just one direction!");
           alert();
