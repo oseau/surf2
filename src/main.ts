@@ -570,7 +570,7 @@ const watchPositions = async () => {
       if (positions.length === 0) {
         updateLog("stay safe!");
       } else if (positions.length === 1) {
-        for (let i = 0; i < 10; i++) {
+        for (let i = 0; i < 3; i++) {
           console.log("just one direction!");
           alert();
           await sleep();
@@ -641,14 +641,14 @@ const watchPositions = async () => {
       }
     } catch (e) {
       console.error(
-        "Document mutated during iteration, continuing to next check...",
+        "============== Document mutated during iteration, continuing to next check...",
         e,
       );
     }
     locker.unlock();
   }).observe(
     await waitForElementByXpath(
-      `//main/div/div[3]//div[@data-scope="tabs" and @data-part="content"][2]//tbody`,
+      "//main//div[3]/div[1]/div[1]/div/p", // price tag above chart
     ),
     {
       childList: true,
@@ -660,14 +660,14 @@ const watchPositions = async () => {
 
 if (import.meta.env.DEV) {
   document.addEventListener("click", (event) => {
-    const selector = finder(event.target as any);
-    console.log("==============", { selector });
+    const css = finder(event.target as any);
+    console.log("==============", { css });
   });
 }
 
-await bindKeys();
-await scrollDown();
-await watchPositions();
+bindKeys();
+scrollDown();
+watchPositions();
 setInterval(() => {
   refresher.refresh();
 }, 1000);
