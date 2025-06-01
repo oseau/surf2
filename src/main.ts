@@ -599,9 +599,11 @@ const watchPositions = async () => {
           await sleep(sec);
           openLong();
           openShort(); // open at same time
-          await sleep();
+          await waitForElementByXpath(
+            '//main/div/div[3]//div[@data-scope="tabs" and @data-part="list"]//button[text()="Positions (2)"]',
+          );
           window.location.reload();
-          await sleep(5); // block here, wait until reload, prevent following save (if any during reload)
+          await sleep(100); // block here, wait until reload, prevent following save (if any during reload)
         }
       }
       for (let position of positions) {
