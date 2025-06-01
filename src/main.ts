@@ -597,10 +597,9 @@ const watchPositions = async () => {
             }
           }, 1000);
           await sleep(sec);
-          await openLong();
-          await sleep(0.05);
-          await openShort();
-          await sleep(0.1);
+          openLong();
+          openShort(); // open at same time
+          await sleep();
           window.location.reload();
           await sleep(5); // block here, wait until reload, prevent following save (if any during reload)
         }
