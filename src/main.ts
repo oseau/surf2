@@ -171,6 +171,32 @@ const reducePosition = async () => {
   }
 };
 
+const reduceLeverage = async (opt = { reset: true }) => {
+  const leverage = parseInt(
+    (
+      await element(
+        '//main/div/div[2]//button[substring(text(), string-length(text()) - string-length("x") + 1) = "x"]',
+      )
+    ).textContent!,
+  );
+  (
+    await element(
+      '//main/div/div[2]//button[substring(text(), string-length(text()) - string-length("x") + 1) = "x"]',
+    )
+  ).click();
+  const inputLeverage = (await element(
+    `//input[@value="${leverage}"]`,
+  )) as HTMLInputElement;
+  const setTo = opt.reset ? 1 : leverage - 10 >= 1 ? leverage - 10 : 1;
+  inputSetter.call(inputLeverage, setTo);
+  inputLeverage.dispatchEvent(new Event("input", { bubbles: true }));
+  (
+    await element(
+      '//div[@data-scope="dialog" and @data-part="content" and @data-state="open"]//button[text()="Confirm"]',
+    )
+  ).click();
+};
+
 const clearOpenOrders = async () => {
   const cancels = await elements(
     `//main/div/div[3]//div[@data-scope="tabs" and @data-part="content"][3]//tbody/tr//button[text()="Cancel"]`,
@@ -271,28 +297,7 @@ const bindKeys = async () => {
         )) as HTMLInputElement;
         inputSetter.call(inputBetSize, 1);
         inputBetSize.dispatchEvent(new Event("input", { bubbles: true }));
-        const leverage = parseInt(
-          (
-            await element(
-              '//main/div/div[2]//button[substring(text(), string-length(text()) - string-length("x") + 1) = "x"]',
-            )
-          ).textContent!,
-        );
-        (
-          await element(
-            '//main/div/div[2]//button[substring(text(), string-length(text()) - string-length("x") + 1) = "x"]',
-          )
-        ).click();
-        const inputLeverage = (await element(
-          `//input[@value="${leverage}"]`,
-        )) as HTMLInputElement;
-        inputSetter.call(inputLeverage, 1);
-        inputLeverage.dispatchEvent(new Event("input", { bubbles: true }));
-        (
-          await element(
-            '//div[@data-scope="dialog" and @data-part="content" and @data-state="open"]//button[text()="Confirm"]',
-          )
-        ).click();
+        await reduceLeverage();
       } else if (e.key === "e") {
         // "e" to select previous tab
         await switchLeft();
@@ -392,6 +397,7 @@ const watchPositions = async () => {
         );
         if (positions.every((p) => p.percentage >= PERCENTAGE_MIN)) {
           await sellAllMarket();
+          await reduceLeverage({ reset: false }); // reduce leverage by 10, since we're autopilot.
           const sec = randomInt(60, 600);
           console.log(`sleeping ${sec}s!`);
           let _sec = sec;
