@@ -1,14 +1,8 @@
 // @ts-ignore isolatedModules
 import { alert } from "./notification";
+import { sleep, randomInt, locker, refresher } from "./utils";
+import { element, elements } from "./dom";
 import { finder } from "@medv/finder";
-import {
-  element,
-  elements,
-  sleep,
-  randomInt,
-  locker,
-  refresher,
-} from "./utils";
 
 const PERCENTAGE_SAVE = [-4, -9, -16, -25, -36, -49, -64, -81]; // -x% PNL to take action & alert on each save
 const PERCENTAGE_MIN = 30; // we'll take profit if all positions >= this
@@ -94,7 +88,7 @@ const parseRow = async (row: Node) => {
       (
         await element(
           './/td//p[substring(text(), string-length(text()) - string-length("x") + 1) = "x"]',
-          row,
+          { base: row },
         )
       ).textContent!.replaceAll(",", ""),
     ),
@@ -104,21 +98,30 @@ const parseRow = async (row: Node) => {
       ? leverageSet
       : leverageRow;
   const size = parseInt(
-    (await element('.//td[starts-with(text(), "$ ")]', row))
+    (await element('.//td[starts-with(text(), "$ ")]', { base: row }))
       .textContent!.replaceAll(",", "")
       .substring(1),
   );
   const entryPrice = parseFloat(
-    (await element(".//td[5]//p", row)).textContent!.replaceAll(",", ""),
+    (await element(".//td[5]//p", { base: row })).textContent!.replaceAll(
+      ",",
+      "",
+    ),
   );
   const currentPrice = parseFloat(
-    (await element(".//td[6]//p", row)).textContent!.replaceAll(",", ""),
+    (await element(".//td[6]//p", { base: row })).textContent!.replaceAll(
+      ",",
+      "",
+    ),
   );
   const saveCount = Math.ceil(
     (size - betSize * leverage) / (betSize * leverage),
   );
   const liqPrice = parseFloat(
-    (await element(".//td[7]//p", row)).textContent!.replaceAll(",", ""),
+    (await element(".//td[7]//p", { base: row })).textContent!.replaceAll(
+      ",",
+      "",
+    ),
   );
   const direction = liqPrice <= entryPrice ? "long" : "short";
   const percentage =
@@ -151,7 +154,7 @@ const reducePosition = async () => {
       // 1. if percentage is negtive, we'll reduce when we get back even
       // 2. if percentage is positive, we take profit now
     ) {
-      (await element('.//td//p[text()="Limit"]', position)).click();
+      (await element('.//td//p[text()="Limit"]', { base: position })).click();
 
       const inputPrice = (await element(
         '(//*[starts-with(@id,"dialog")]//input)[1]',
