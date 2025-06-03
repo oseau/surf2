@@ -1,10 +1,11 @@
 // @ts-ignore isolatedModules
 import { alert } from "./notification";
 import { sleep, randomInt, locker, refresher } from "./utils";
+import { parseRow, holding } from "./position";
 import { element, elements } from "./dom";
 import { finder } from "@medv/finder";
 
-const PERCENTAGE_SAVE = [-4, -9, -16, -25, -36, -49, -64, -81]; // -x% PNL to take action & alert on each save
+const PERCENTAGE_SAVE = [-1, -4, -9, -16, -25, -36, -49, -64, -81]; // -x% PNL to take action & alert on each save
 const PERCENTAGE_MIN = 30; // we'll take profit if all positions >= this
 
 const logger = (() => {
@@ -71,76 +72,6 @@ const openShort = async () => {
   }
 };
 
-const parseRow = async (row: Node) => {
-  const betSize = parseInt(
-    ((await element("(//main//input)[1]/@value")) as HTMLInputElement).value,
-  );
-  const leverageSet = parseInt(
-    (
-      await element(
-        '//main/div/div[2]//button[substring(text(), string-length(text()) - string-length("x") + 1) = "x"]',
-      )
-    ).textContent!,
-  );
-  const leverageRow = Math.ceil(
-    // 164.8 => 165
-    parseFloat(
-      (
-        await element(
-          './/td//p[substring(text(), string-length(text()) - string-length("x") + 1) = "x"]',
-          { base: row },
-        )
-      ).textContent!.replaceAll(",", ""),
-    ),
-  );
-  const leverage =
-    leverageRow <= leverageSet && leverageRow / leverageSet >= 0.9
-      ? leverageSet
-      : leverageRow;
-  const size = parseInt(
-    (await element('.//td[starts-with(text(), "$ ")]', { base: row }))
-      .textContent!.replaceAll(",", "")
-      .substring(1),
-  );
-  const entryPrice = parseFloat(
-    (await element(".//td[5]//p", { base: row })).textContent!.replaceAll(
-      ",",
-      "",
-    ),
-  );
-  const currentPrice = parseFloat(
-    (await element(".//td[6]//p", { base: row })).textContent!.replaceAll(
-      ",",
-      "",
-    ),
-  );
-  const saveCount = Math.ceil(
-    (size - betSize * leverage) / (betSize * leverage),
-  );
-  const liqPrice = parseFloat(
-    (await element(".//td[7]//p", { base: row })).textContent!.replaceAll(
-      ",",
-      "",
-    ),
-  );
-  const direction = liqPrice <= entryPrice ? "long" : "short";
-  const percentage =
-    ((direction === "long" ? 100 : -100) *
-      leverage *
-      (currentPrice - entryPrice)) /
-    entryPrice;
-  return {
-    betSize,
-    leverage,
-    size,
-    entryPrice,
-    liqPrice,
-    percentage,
-    direction: direction as "long" | "short",
-    saveCount,
-  };
-};
-
 const reducePosition = async () => {
   const positions = await elements(
     `//main/div/div[3]//div[@data-scope="tabs" and @data-part="content"][2]//tbody/tr`,
@@ -174,7 +105,7 @@ const reducePosition = async () => {
   }
 };
 
-const reduceLeverage = async (opt = { reset: true }) => {
+const reduceLeverage = async (opt = { diff: 0 }) => {
   const leverage = parseInt(
     (
       await element(
@@ -182,15 +113,12 @@ const reduceLeverage = async (opt = { reset: true }) => {
       )
     ).textContent!,
   );
-  (
-    await element(
-      '//main/div/div[2]//button[substring(text(), string-length(text()) - string-length("x") + 1) = "x"]',
-    )
-  ).click();
+  (await element(`//main/div/div[2]//button[text() = "${leverage}x"]`)).click();
   const inputLeverage = (await element(
     `//input[@value="${leverage}"]`,
   )) as HTMLInputElement;
-  const setTo = opt.reset ? 1 : leverage - 10 >= 1 ? leverage - 10 : 1;
+  const setTo =
+    opt.diff === 0 ? 1 : leverage - opt.diff >= 1 ? leverage - opt.diff : 1;
   inputSetter.call(inputLeverage, setTo);
   inputLeverage.dispatchEvent(new Event("input", { bubbles: true }));
   (
@@ -384,11 +312,8 @@ const watchPositions = async () => {
       if (positions.length === 0) {
         updateLog("stay safe!");
       } else if (positions.length === 1) {
-        for (let i = 0; i < 3; i++) {
-          console.log("just one direction!");
-          alert();
-          await sleep();
-        }
+        console.log("just one direction!");
+        alert();
       } else if (positions.length === 2) {
         const total = positions.reduce((acc, cur) => acc + cur.percentage, 0);
         updateLog(
@@ -400,7 +325,10 @@ const watchPositions = async () => {
         );
         if (positions.every((p) => p.percentage >= PERCENTAGE_MIN)) {
           await sellAllMarket();
-          await reduceLeverage({ reset: false }); // reduce leverage by 10, since we're autopilot.
+          await element(
+            '//main/div/div[3]//div[@data-scope="tabs" and @data-part="list"]//button[text()="Positions (0)"]',
+          );
+          await reduceLeverage({ diff: 2 }); // reduce leverage by 2, since we're autopilot.
           const sec = randomInt(60, 600);
           console.log(`sleeping ${sec}s!`);
           let _sec = sec;
@@ -423,28 +351,26 @@ const watchPositions = async () => {
       }
       for (let position of positions) {
         if (position.percentage <= threshould) {
-          alert(shouldAutoOpen ? 20 : 100); // louder if we've used all save tries
+          alert(shouldAutoOpen ? 15 : 100); // louder if we've used all save tries
           if (shouldAutoOpen) {
             switch (position.direction) {
               case "long":
                 await openLong();
+                // wait for open order to be filled
+                await holding({
+                  direction: "long",
+                  size: position.size + position.betSize * position.leverage,
+                });
                 break;
               case "short":
                 await openShort();
+                // wait for open order to be filled
+                await holding({
+                  direction: "short",
+                  size: position.size + position.betSize * position.leverage,
+                });
                 break;
             }
-            // wait for open order to be filled
-            await element(
-              `//main/div/div[3]//div[@data-scope="tabs" and @data-part="content"][2]//tbody/tr/td[starts-with(text(), "$ ${new Intl.NumberFormat(
-                "en-US",
-                {
-                  style: "currency",
-                  currency: "USD",
-                },
-              )
-                .format(position.size + position.betSize * position.leverage)
-                .substring(1)}")]`,
-            );
             // clean previously orders (if any)
             await clearOpenOrders();
             await element(
