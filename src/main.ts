@@ -8,6 +8,9 @@ import { finder } from "@medv/finder";
 const PERCENTAGE_SAVE = [-1, -4, -9, -16, -25, -36, -49, -64, -81]; // -x% PNL to take action & alert on each save
 const PERCENTAGE_MIN = 30; // we'll take profit if all positions >= this
 
+const lockerOrder = locker();
+const lockerSession = locker();
+
 const logger = (() => {
   // Create the host element for the shadow DOM
   // steal from https://github.com/philc/vimium/blob/fbd791ac13baac6cf2ddc563ce529e7a7b856dad/content_scripts/vimium_frontend.js#L358C13-L371
@@ -289,7 +292,7 @@ const scrollDown = async () => {
 
 const watchPositions = async () => {
   new MutationObserver(async () => {
-    if (!locker.lock()) {
+    if (!lockerOrder.lock()) {
       return;
     }
     try {
@@ -324,6 +327,7 @@ const watchPositions = async () => {
             `(${threshould}${shouldAutoOpen ? "" : " ↑↑↑"})      ${total.toFixed(2)}`,
         );
         if (positions.every((p) => p.percentage >= PERCENTAGE_MIN)) {
+          lockerSession.lock();
           await sellAllMarket();
           await element(
             '//main/div/div[3]//div[@data-scope="tabs" and @data-part="list"]//button[text()="Positions (0)"]',
@@ -387,7 +391,7 @@ const watchPositions = async () => {
         e,
       );
     }
-    locker.unlock();
+    lockerOrder.unlock();
   }).observe(
     await element(
       "//main//div[3]/div[1]/div[1]/div/p", // price tag above chart
@@ -411,5 +415,9 @@ bindKeys();
 scrollDown();
 watchPositions();
 setInterval(() => {
-  refresher.refresh();
+  if (lockerSession.lock()) {
+    // ignore if we just finishing a session and waiting for next round
+    refresher.refresh();
+    lockerSession.unlock();
+  }
 }, 1000);

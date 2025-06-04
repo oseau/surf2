@@ -18,7 +18,7 @@ const randomInt = (
   max: number, // [min, max] both inclusive
 ) => Math.floor(Math.random() * (max - min + 1) + min);
 
-const locker = (() => {
+const locker = () => {
   let locked = false;
   return {
     lock: () => {
@@ -32,7 +32,7 @@ const locker = (() => {
       locked = false;
     },
   };
-})();
+};
 
 const refresher = (() => {
   // refresh if we did not receive data within last 10 seconds
