@@ -6,7 +6,7 @@ import { element, elements } from "./dom";
 import { finder } from "@medv/finder";
 
 const PERCENTAGE_SAVE = [-1, -4, -9, -16, -25, -36, -49, -64, -81]; // -x% PNL to take action & alert on each save
-const PERCENTAGE_MIN = 30; // we'll take profit if all positions >= this
+const PERCENTAGE_MIN = 100; // we'll take profit if all positions >= this
 
 const lockerOrder = locker();
 const lockerSession = locker();
