@@ -1,15 +1,13 @@
 // @ts-ignore isolatedModules
 import { alert } from "./notification";
-import { sleep, randomInt, locker, refresher } from "./utils";
-import { parseRow, holding } from "./position";
+import { sleep, locker, refresher } from "./utils";
+import { parseHolding, holding } from "./position";
 import { element, elements } from "./dom";
 import { finder } from "@medv/finder";
 
 const PERCENTAGE_SAVE = [-1, -4, -9, -16, -25, -36, -49, -64, -81]; // -x% PNL to take action & alert on each save
-const PERCENTAGE_MIN = 100; // we'll take profit if all positions >= this
 
 const lockerOrder = locker();
-const lockerSession = locker();
 
 const logger = (() => {
   // Create the host element for the shadow DOM
@@ -80,7 +78,8 @@ const reducePosition = async () => {
     `//main/div/div[3]//div[@data-scope="tabs" and @data-part="content"][2]//tbody/tr`,
   );
   for (let position of positions) {
-    const { size, betSize, leverage, entryPrice } = await parseRow(position);
+    const { size, betSize, leverage, entryPrice } =
+      await parseHolding(position);
     const sizeToReduce = size - betSize * leverage;
     if (
       sizeToReduce > 0
@@ -103,7 +102,7 @@ const reducePosition = async () => {
 
       (await element('//button[text()="Close"]')).click();
 
-      return; // since we click "Limit", the doc has mutated, following loop can not be executed.
+      return; // since we click "Limit", the dom has mutated, following loop can not be executed.
     }
   }
 };
@@ -245,8 +244,9 @@ const bindKeys = async () => {
         // "k" to clear open orders
         await clearOpenOrders();
       } else if (e.key === "q") {
-        // show log
         toggleLog();
+      } else if (e.key === ";") {
+        // for dev&debug
       } else if (e.key === "p") {
         window.location.reload();
       } else if (e.key === "'") {
@@ -282,6 +282,10 @@ const scrollDown = async () => {
     await sleep();
     window.scrollTo({ top: 90, behavior: "smooth" });
   }
+  await resetOpening();
+};
+
+const resetOpening = async () => {
   // reset, previous session may be blocked and have uneven positions
   await clearOpenOrders();
   await element(
@@ -301,7 +305,7 @@ const watchPositions = async () => {
           await elements(
             `//main/div/div[3]//div[@data-scope="tabs" and @data-part="content"][2]//tbody/tr`,
           )
-        ).map(async (p) => await parseRow(p)),
+        ).map(async (p) => await parseHolding(p)),
       );
       const saveCount = positions.reduce(
         (acc, cur) => (cur.saveCount >= acc.saveCount ? cur : acc),
@@ -326,32 +330,6 @@ const watchPositions = async () => {
           ) +
             `(${threshould}${shouldAutoOpen ? "" : " ↑↑↑"})      ${total.toFixed(2)}`,
         );
-        if (positions.every((p) => p.percentage >= PERCENTAGE_MIN)) {
-          lockerSession.lock();
-          await sellAllMarket();
-          await element(
-            '//main/div/div[3]//div[@data-scope="tabs" and @data-part="list"]//button[text()="Positions (0)"]',
-          );
-          await reduceLeverage({ diff: 2 }); // reduce leverage by 2, since we're autopilot.
-          const sec = randomInt(60, 600);
-          console.log(`sleeping ${sec}s!`);
-          let _sec = sec;
-          setInterval(() => {
-            // prevent refresh by our 10s non watch rule
-            _sec--;
-            if (_sec > 0) {
-              updateLog(`waiting ${_sec}s...`);
-            }
-          }, 1000);
-          await sleep(sec);
-          openLong();
-          openShort(); // open at same time
-          await element(
-            '//main/div/div[3]//div[@data-scope="tabs" and @data-part="list"]//button[text()="Positions (2)"]',
-          );
-          window.location.reload();
-          await sleep(100); // block here, wait until reload, prevent following save (if any during reload)
-        }
       }
       for (let position of positions) {
         if (position.percentage <= threshould) {
@@ -415,9 +393,5 @@ bindKeys();
 scrollDown();
 watchPositions();
 setInterval(() => {
-  if (lockerSession.lock()) {
-    // ignore if we just finishing a session and waiting for next round
-    refresher.refresh();
-    lockerSession.unlock();
-  }
+  refresher.refresh();
 }, 1000);
