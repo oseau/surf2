@@ -38,7 +38,9 @@ const refresher = (() => {
   // refresh if we did not receive data within last 10 seconds
   let latest = Date.now();
   return {
-    update: () => (latest = Date.now()),
+    update: () => {
+      latest = Date.now();
+    },
     refresh: () => {
       if ((Date.now() - latest) / 1000 >= 10) {
         window.location.reload();

@@ -9,7 +9,7 @@ export default defineConfig({
       userscript: {
         icon: "https://vitejs.dev/logo.svg",
         namespace: "npm/vite-plugin-monkey",
-        match: ["https://v2.surf.one/trade/BTCUSDT/"],
+        match: ["https://v2.surf.one/trade/*/"],
       },
     }),
   ],
