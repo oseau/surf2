@@ -1,8 +1,9 @@
 // @ts-ignore isolatedModules
 import { alert } from "./notification";
-import { sleep, locker, refresher } from "./utils";
+import { locker, refresher } from "./utils";
 import { parseHolding, holding } from "./position";
 import { element, elements } from "./dom";
+import { isManual, toggleManual } from "./store";
 import { finder } from "@medv/finder";
 
 const PERCENTAGE_SAVE = [-1, -4, -9, -16, -25, -36, -49, -64, -81]; // -x% PNL to take action & alert on each save
@@ -29,7 +30,7 @@ const logger = (() => {
   div.style.right = "0px";
   div.style.backgroundColor = "rgba(0, 0, 0, 0.9)";
   div.style.color = "white";
-  div.style.padding = "4px 20px";
+  div.style.padding = "0px 20px";
   div.style.borderRadius = "5px";
   div.style.zIndex = "1000";
   div.style.textAlign = "right";
@@ -176,28 +177,6 @@ const switchRight = async () => {
   }
 };
 
-// get index of tab
-const getIdx = async () => {
-  const currentTabText = (
-    await element(
-      '//main/div/div[3]//div[@data-scope="tabs" and @data-part="list"]//button[@data-selected]',
-    )
-  ).textContent!;
-  let idx = 0;
-  if (currentTabText === "Public Trades") {
-    idx = 1;
-  } else if (currentTabText.startsWith("Positions ")) {
-    idx = 2;
-  } else if (currentTabText.startsWith("Open Orders ")) {
-    idx = 3;
-  } else if (currentTabText === "Trade History") {
-    idx = 4;
-  } else if (currentTabText === "Transaction History") {
-    idx = 5;
-  }
-  return idx;
-};
-
 const inputSetter = Object.getOwnPropertyDescriptor(
   window.HTMLInputElement.prototype,
   "value",
@@ -213,16 +192,10 @@ const bindKeys = async () => {
       }
       if (e.key === "a") {
         e.preventDefault();
-        (await element('//button[text()="Long"]')).click();
-        if (document.activeElement instanceof HTMLElement) {
-          document.activeElement.blur();
-        }
+        await openLong();
       } else if (e.key === "o") {
         e.preventDefault();
-        (await element('//button[text()="Short"]')).click();
-        if (document.activeElement instanceof HTMLElement) {
-          document.activeElement.blur();
-        }
+        await openShort();
       } else if (e.key === "`") {
         // "`" to reset leverage & collateral to 1 to be safe
         const inputBetSize = (await element(
@@ -245,6 +218,8 @@ const bindKeys = async () => {
         await clearOpenOrders();
       } else if (e.key === "q") {
         toggleLog();
+      } else if (e.key === "m") {
+        toggleManual();
       } else if (e.key === ";") {
         // for dev&debug
       } else if (e.key === "p") {
@@ -259,18 +234,17 @@ const bindKeys = async () => {
 };
 
 const scrollDown = async () => {
+  // make sure we have at least one row to continue
+  await element(
+    `//main/div/div[3]//div[@data-scope="tabs" and @data-part="content"][2]//tbody/tr`,
+  );
   (
     await element(
-      '//main/div/div[3]//div[@data-scope="tabs" and @data-part="list"]//button[starts-with(text(), "Positions (2")]',
+      '//main/div/div[3]//div[@data-scope="tabs" and @data-part="list"]//button[starts-with(text(), "Positions (")]',
     )
   ).click();
-  const idx = await getIdx();
-  if (idx !== 2) {
-    console.log("check idx!");
-    return;
-  }
   const rows = await elements(
-    `//main/div/div[3]//div[@data-scope="tabs" and @data-part="content"][${idx}]//tbody/tr`,
+    `//main/div/div[3]//div[@data-scope="tabs" and @data-part="content"][2]//tbody/tr`,
   );
   if (rows.length > 0) {
     (await element("//main/following-sibling::div[1]")).hidden = true;
@@ -278,15 +252,16 @@ const scrollDown = async () => {
       block: "end",
       inline: "nearest",
     });
-    window.scrollTo({ top: 0, behavior: "smooth" });
-    await sleep();
-    window.scrollTo({ top: 90, behavior: "smooth" });
+    window.scrollBy({ top: -15, behavior: "smooth" });
+    await resetOpening();
   }
-  await resetOpening();
 };
 
 const resetOpening = async () => {
   // reset, previous session may be blocked and have uneven positions
+  if (isManual()) {
+    return;
+  }
   await clearOpenOrders();
   await element(
     '//main/div/div[3]//div[@data-scope="tabs" and @data-part="list"]//button[text()="Open Orders (0)"]',
@@ -307,59 +282,58 @@ const watchPositions = async () => {
           )
         ).map(async (p) => await parseHolding(p)),
       );
-      const saveCount = positions.reduce(
-        (acc, cur) => (cur.saveCount >= acc.saveCount ? cur : acc),
-        { saveCount: 0 },
-      ).saveCount;
-      const shouldAutoOpen = saveCount < PERCENTAGE_SAVE.length;
-      const threshould = shouldAutoOpen
-        ? PERCENTAGE_SAVE[saveCount]
-        : PERCENTAGE_SAVE[PERCENTAGE_SAVE.length - 1];
 
       if (positions.length === 0) {
-        updateLog("stay safe!");
-      } else if (positions.length === 1) {
-        console.log("just one direction!");
-        alert();
-      } else if (positions.length === 2) {
+        updateLog(`stay safe! ${isManual() ? "💪" : "🚀"}`);
+      } else {
+        if (positions.length === 1 && !isManual()) {
+          // just one direction!
+          alert();
+        }
         const total = positions.reduce((acc, cur) => acc + cur.percentage, 0);
         updateLog(
           positions.reduce(
-            (acc, cur) => `${acc}${cur.percentage.toFixed(2)}\n`,
+            (acc, cur) =>
+              `${acc}${cur.percentage < 0 ? `(${cur.saveCount < PERCENTAGE_SAVE.length ? PERCENTAGE_SAVE[cur.saveCount] : `${PERCENTAGE_SAVE[PERCENTAGE_SAVE.length - 1]} ↑↑↑`})` : ""}     ${cur.percentage.toFixed(2)}\n`,
             "",
-          ) +
-            `(${threshould}${shouldAutoOpen ? "" : " ↑↑↑"})      ${total.toFixed(2)}`,
+          ) + `${isManual() ? "💪" : "🚀"}        ${total.toFixed(2)}`,
         );
       }
-      for (let position of positions) {
-        if (position.percentage <= threshould) {
-          alert(shouldAutoOpen ? 15 : 100); // louder if we've used all save tries
-          if (shouldAutoOpen) {
-            switch (position.direction) {
-              case "long":
-                await openLong();
-                // wait for open order to be filled
-                await holding({
-                  direction: "long",
-                  size: position.size + position.betSize * position.leverage,
-                });
-                break;
-              case "short":
-                await openShort();
-                // wait for open order to be filled
-                await holding({
-                  direction: "short",
-                  size: position.size + position.betSize * position.leverage,
-                });
-                break;
+      if (!isManual()) {
+        for (let position of positions) {
+          const shouldAutoOpen = position.saveCount < PERCENTAGE_SAVE.length;
+          const threshould = shouldAutoOpen
+            ? PERCENTAGE_SAVE[position.saveCount]
+            : PERCENTAGE_SAVE[PERCENTAGE_SAVE.length - 1];
+          if (position.percentage <= threshould) {
+            alert(shouldAutoOpen ? 15 : 100); // louder if we've used all save tries
+            if (shouldAutoOpen) {
+              switch (position.direction) {
+                case "long":
+                  await openLong();
+                  // wait for open order to be filled
+                  await holding({
+                    direction: "long",
+                    size: position.size + position.betSize * position.leverage,
+                  });
+                  break;
+                case "short":
+                  await openShort();
+                  // wait for open order to be filled
+                  await holding({
+                    direction: "short",
+                    size: position.size + position.betSize * position.leverage,
+                  });
+                  break;
+              }
+              // clean previously orders (if any)
+              await clearOpenOrders();
+              await element(
+                '//main/div/div[3]//div[@data-scope="tabs" and @data-part="list"]//button[text()="Open Orders (0)"]',
+              );
+              // open new reduce position order
+              await reducePosition();
             }
-            // clean previously orders (if any)
-            await clearOpenOrders();
-            await element(
-              '//main/div/div[3]//div[@data-scope="tabs" and @data-part="list"]//button[text()="Open Orders (0)"]',
-            );
-            // open new reduce position order
-            await reducePosition();
           }
         }
       }

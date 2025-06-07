@@ -115,28 +115,14 @@ const parseHolding = async (row: Node) => {
   const betSize = parseInt(
     ((await element("(//main//input)[1]/@value")) as HTMLInputElement).value,
   );
-  const leverageSet = parseInt(
+  // leverage is what we set at right-top, we ignore row's leverage, as we might add additional collateral
+  const leverage = parseInt(
     (
       await element(
         '//main/div/div[2]//button[substring(text(), string-length(text()) - string-length("x") + 1) = "x"]',
       )
     ).textContent!,
   );
-  const leverageRow = Math.ceil(
-    // 164.8 => 165
-    parseFloat(
-      (
-        await element(
-          './/td//p[substring(text(), string-length(text()) - string-length("x") + 1) = "x"]',
-          { base: row },
-        )
-      ).textContent!.replaceAll(",", ""),
-    ),
-  );
-  const leverage =
-    leverageRow <= leverageSet && leverageRow / leverageSet >= 0.9
-      ? leverageSet
-      : leverageRow;
   const size = parseInt(
     (await element('.//td[starts-with(text(), "$ ")]', { base: row }))
       .textContent!.replaceAll(",", "")

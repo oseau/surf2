@@ -10,6 +10,7 @@ short-cuts for https://v2.surf.one/
 - `k` to clear open orders
 - `p` to refresh
 - `q` to toggle log
+- `m` to toggle between manual/auto
 - `'` to close all positions using market price
 
 alert and save when any position lost >= -XX%, check `PERCENTAGE_SAVE`.
