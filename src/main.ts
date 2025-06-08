@@ -3,7 +3,7 @@ import { alert } from "./notification";
 import { locker, refresher } from "./utils";
 import { parseHolding, holding } from "./position";
 import { element, elements } from "./dom";
-import { isManual, toggleManual } from "./store";
+import { getStartPositionCount, isManual, toggleManual } from "./store";
 import { finder } from "@medv/finder";
 
 const PERCENTAGE_SAVE = [-1, -4, -9, -16, -25, -36, -49, -64, -81]; // -x% PNL to take action & alert on each save
@@ -286,7 +286,10 @@ const watchPositions = async () => {
       if (positions.length === 0) {
         updateLog(`stay safe! ${isManual() ? "💪" : "🚀"}`);
       } else {
-        if (positions.length === 1 && !isManual()) {
+        if (
+          !isManual() &&
+          positions.length !== (await getStartPositionCount())
+        ) {
           // just one direction!
           alert();
         }

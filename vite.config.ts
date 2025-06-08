@@ -6,6 +6,7 @@ export default defineConfig({
   plugins: [
     monkey({
       entry: "src/main.ts",
+      server: { open: false },
       userscript: {
         icon: "https://vitejs.dev/logo.svg",
         namespace: "npm/vite-plugin-monkey",
