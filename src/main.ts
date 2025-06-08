@@ -3,7 +3,12 @@ import { alert } from "./notification";
 import { locker, refresher } from "./utils";
 import { parseHolding, holding } from "./position";
 import { element, elements } from "./dom";
-import { getStartPositionCount, isManual, toggleManual } from "./store";
+import {
+  getStartPositionCount,
+  isManual,
+  setManual,
+  toggleManual,
+} from "./store";
 import { finder } from "@medv/finder";
 
 const PERCENTAGE_SAVE = [-1, -4, -9, -16, -25, -36, -49, -64, -81]; // -x% PNL to take action & alert on each save
@@ -204,6 +209,7 @@ const bindKeys = async () => {
         inputSetter.call(inputBetSize, 1);
         inputBetSize.dispatchEvent(new Event("input", { bubbles: true }));
         await reduceLeverage();
+        setManual();
       } else if (e.key === "e") {
         // "e" to select previous tab
         await switchLeft();
@@ -227,6 +233,7 @@ const bindKeys = async () => {
       } else if (e.key === "'") {
         // "'" to sell all market
         await sellAllMarket();
+        setManual();
       }
     },
     true,

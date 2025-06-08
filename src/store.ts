@@ -10,6 +10,11 @@ const toggleManual = () => {
   resetStartPositionCount();
 };
 
+const setManual = () => {
+  GM_setValue("manual", true);
+  resetStartPositionCount();
+};
+
 const getStartPositionCount = async () => {
   const count = getValue("position_count");
   if (count !== null) {
@@ -26,4 +31,4 @@ const resetStartPositionCount = () => {
   GM_deleteValue("position_count");
 };
 
-export { isManual, toggleManual, getStartPositionCount };
+export { isManual, toggleManual, setManual, getStartPositionCount };
