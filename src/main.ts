@@ -283,16 +283,13 @@ const watchPositions = async () => {
         ).map(async (p) => await parseHolding(p)),
       );
 
+      if (!isManual() && positions.length !== (await getStartPositionCount())) {
+        // just one direction!
+        alert();
+      }
       if (positions.length === 0) {
         updateLog(`stay safe! ${isManual() ? "💪" : "🚀"}`);
       } else {
-        if (
-          !isManual() &&
-          positions.length !== (await getStartPositionCount())
-        ) {
-          // just one direction!
-          alert();
-        }
         const total = positions.reduce((acc, cur) => acc + cur.percentage, 0);
         updateLog(
           positions.reduce(
