@@ -2,6 +2,8 @@
 
 short-cuts for https://v2.surf.one/
 
+install tampermonkey first https://chromewebstore.google.com/detail/tampermonkey/dhdgffkkebhmkfjojejmpbldmpobfkfo
+
 - `` ` `` to reset leverage and collateral to 1 to be safe
 - `a` to `open long`
 - `o` to `open short`
