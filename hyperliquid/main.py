@@ -48,8 +48,12 @@ def render_candles():
     stats = (
         f"avg: {render_number(avg, base)}, threshold: {render_number(10 * avg, base)}"
     )
-    print("\033[F\033[K", end="")  # Move up and clear both lines
-    print(f"{values}\n{stats}", end="", flush=True)
+    # moves cursor to the beginning of the previous line
+    print("\033[F", end="")
+    # clear line first then print
+    print(f"\033[K{values}")
+    # clear line first then print, no return at the end, and flush
+    print(f"\033[K{stats}", end="", flush=True)
 
 
 def render_number(num, base):
