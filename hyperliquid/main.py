@@ -3,14 +3,15 @@ import os
 import signal
 import statistics
 import subprocess
-import sys
 import time
 
 from hyperliquid.info import Info
 from hyperliquid.utils import constants
 
+COIN = "PUMP"
+INTERVAL = "5m"
 candles = {}  # start timestamp -> latest volume
-TRACK_COUNT = 18
+TRACK_COUNT = 12
 
 
 class ConnectionLossHandler(logging.Handler):
@@ -37,15 +38,35 @@ def render_candles():
         oldest = sorted(candles.keys())[0]
         del candles[oldest]
 
-    values = ", ".join(f"{candles[k]:.1f}" for k in sorted(candles.keys()))
+    base = get_base(v for v in candles.values())
+    values = ", ".join(render_number(candles[k], base) for k in sorted(candles.keys()))
     latest = sorted(candles.keys())[-1] if candles else 0
     volume = candles[latest] if latest else 0
     avg = get_avg()
     if avg > 0 and volume > 10 * avg:
         alert()
-    stats = f"avg: {avg:.1f}, threshold: {10 * avg:<10.1f}"
+    stats = (
+        f"avg: {render_number(avg, base)}, threshold: {render_number(10 * avg, base)}"
+    )
     print("\033[F\033[K", end="")  # Move up and clear both lines
     print(f"{values}\n{stats}", end="", flush=True)
+
+
+def render_number(num, base):
+    unit = {10**0: "", 10**3: "k", 10**6: "m", 10**9: "b"}[base]
+    return f"{num / base:.1f}{unit}"
+
+
+def get_base(nums):
+    return (
+        10**9
+        if all(n > 10**9 for n in nums)
+        else 10**6
+        if all(n > 10**6 for n in nums)
+        else 10**3
+        if all(n > 10**3 for n in nums)
+        else 1
+    )
 
 
 def add_candle(c):
@@ -63,8 +84,9 @@ def get_avg():
 
 def init_candles(info):
     end = int(time.time() * 1000)
-    start = end - 1000 * 60 * (TRACK_COUNT + 10)
-    resp = info.candles_snapshot("BTC", "1m", start, end)
+    unit = {"1m": 1000 * 60, "5m": 1000 * 60 * 5}[INTERVAL]
+    start = end - unit * (TRACK_COUNT + 10)
+    resp = info.candles_snapshot(COIN, INTERVAL, start, end)
     for c in resp:
         candles[str(c["t"])] = float(c["v"])
 
@@ -99,7 +121,7 @@ def main():
     logger.addHandler(ConnectionLossHandler(info))
 
     info.subscribe(
-        {"type": "candle", "coin": "BTC", "interval": "1m"},
+        {"type": "candle", "coin": COIN, "interval": INTERVAL},
         add_candle,
     )
 
