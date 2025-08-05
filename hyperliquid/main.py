@@ -106,6 +106,8 @@ def alert(sound="notification"):
         ]),
         subprocess.Popen([
             "afplay",
+            "-v",
+            "5" if sound == "notification" else "2",
             f"./{sound}.mp3",
         ]),  # system notification volume too low
     ]
